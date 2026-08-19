@@ -1,2 +1,10 @@
 venv
 node_modules
+.npm-cache
+.electron-cache
+.env
+barq_data
+*.log
+__pycache__/
+*.pyc
+*.onnx
