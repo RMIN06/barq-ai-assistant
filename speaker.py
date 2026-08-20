@@ -6,9 +6,9 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 from elevenlabs.client import ElevenLabs
 
-from config import ELEVENLAB_KEY, ELEVEN_MODEL, ELEVEN_VOICE_ID
+from config import ELEVENLABS_API_KEY, ELEVEN_MODEL, ELEVEN_VOICE_ID
 
-client = ElevenLabs(api_key=ELEVENLAB_KEY)
+client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
 
 # Initialize the pygame audio mixer once
 pygame.mixer.init()
