@@ -29,6 +29,7 @@ from screen_context import (
 )
 from vision import describe_screen
 from barqlog import get_logger
+from health import record_wake_detection, record_command, record_error
 
 import subprocess
 import json
@@ -133,10 +134,12 @@ async def service_engine_loop():
                 woken = await asyncio.to_thread(wait_for_wake_v2)
             except Exception as e:
                 log.error(f"Wake detection error: {e}")
+                record_error("wake_detection")
                 woken = False
 
             if woken:
                 log.info("Wake word detected!")
+                record_wake_detection()
                 is_awake = True
 
                 if not ui_spawned:
@@ -189,6 +192,7 @@ async def service_engine_loop():
         intent = result.get("intent", "conversation")
         action = result.get("action", "")
         subject = result.get("subject", "")
+        record_command(intent)
         stop = None
 
         if intent == "browser":
@@ -203,6 +207,7 @@ async def service_engine_loop():
                     tabs = ctx.get("open_browser_tabs", []) or []
                     stop = ("Tabs: " + " | ".join(tabs[:8])) if tabs else "No browser tabs open."
             except Exception as e:
+                record_error("browser_action")
                 stop = f"Browser error: {e}"
 
         elif intent == "screen":
@@ -211,6 +216,7 @@ async def service_engine_loop():
                 item = await asyncio.to_thread(describe_screen, png)
                 stop = item
             except Exception as e:
+                record_error("screen_vision")
                 stop = f"Screen read error: {e}"
 
         elif intent == "app" and action == "open":
@@ -218,6 +224,7 @@ async def service_engine_loop():
                 res = open_app(subject)
                 stop = res["message"]
             except Exception as e:
+                record_error("app_launch")
                 stop = f"App open error: {e}"
 
         elif intent == "system":
@@ -232,6 +239,7 @@ async def service_engine_loop():
                 stop = "Done. Task executed."
             except Exception as e:
                 log.error(f"Interpreter error: {e}")
+                record_error("interpreter")
                 stop = "Execution failed."
 
         if stop:
@@ -251,6 +259,9 @@ def run_service():
         asyncio.run(service_engine_loop())
     except KeyboardInterrupt:
         log.info("Service interrupted")
+    except Exception as e:
+        log.error(f"Service crashed: {e}")
+        record_error("service_crash")
     finally:
         ENGINE_RUNNING = False
         kill_ui()

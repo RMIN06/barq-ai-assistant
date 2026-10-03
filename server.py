@@ -24,6 +24,7 @@ from screen_context import (
 )
 from vision import describe_screen
 from auth import authenticate_websocket, get_auth_token
+from health import router as health_router, record_wake_detection, record_command, record_error
 
 # --- Open Interpreter (for complex system/code tasks) ---
 from interpreter import interpreter
@@ -112,10 +113,12 @@ def run_barq_engine():
                     woken = await asyncio.to_thread(wait_for_wake)
                 except Exception as e:
                     log.error("Wake error: %s", e, exc_info=True)
+                    record_error("wake_detection")
                     woken = False
                 if woken:
                     is_awake = True
                     log.info("Wake word detected.")
+                    record_wake_detection()
                     await manager.broadcast({"type": "wake"})
                     await manager.broadcast({
                         "type": "state", "aiState": "listening",
@@ -158,6 +161,7 @@ def run_barq_engine():
                     await speak(fast)
                 except Exception:
                     pass
+                record_command("fast_route")
                 continue
 
             # Cheap screen context -> brain
@@ -166,6 +170,7 @@ def run_barq_engine():
                 situation = format_situation(ctx)
             except Exception as e:
                 print("[Screen ctx error]", e)
+                record_error("screen_context")
                 ctx, situation = {}, ""
 
             await manager.broadcast({
@@ -184,6 +189,7 @@ def run_barq_engine():
             intent = result.get("intent", "conversation")
             action = result.get("action", "")
             subject = result.get("subject", "")
+            record_command(intent)
             stop = None
 
             if intent == "browser":
@@ -229,7 +235,8 @@ def run_barq_engine():
                     interpreter.chat(command)
                     stop = "Done. Task executed."
                 except Exception as e:
-                    print("[Interpreter error]", e)
+                    log.error("[Interpreter error] %s", e)
+                    record_error("interpreter")
                     stop = "I hit an issue while executing that."
 
             # ===== SPOKEN SITREP =====
@@ -248,6 +255,7 @@ def run_barq_engine():
             asyncio.run(loop())
         except Exception as e:
             log.error("Engine crashed, restarting in 3s: %s", e, exc_info=True)
+            record_error("engine_crash")
             import time as _time
 
             _time.sleep(3)
@@ -273,6 +281,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(health_router)
 
 
 @app.websocket("/ws")
