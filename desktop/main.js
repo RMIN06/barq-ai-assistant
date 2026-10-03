@@ -2,12 +2,14 @@ const { app, BrowserWindow, Menu, Tray } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const WebSocket = require('ws');
+const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
 const VENV_PY = path.join(ROOT, 'venv', 'Scripts', 'python.exe');
 const BARQ_UI = path.join(ROOT, 'barq_ui');
 const UI_URL = 'http://127.0.0.1:3000';
 const BACKEND_URL = 'ws://127.0.0.1:8000/ws';
+const AUTH_FILE = path.join(ROOT, 'barq_data', '.barq_auth');
 
 let win = null;
 let ws = null;
@@ -16,11 +18,32 @@ let nextServer = null;
 let wsRetry = null;
 let tray = null;
 let isQuitting = false;
+let authToken = null;
 
 const START_HIDDEN = process.argv.includes('--hidden');
+const SERVICE_MODE = process.env.BARQ_SERVICE_MODE === '1';
 
 function log(...args) {
   console.log('[Barq]', ...args);
+}
+
+function readAuthToken() {
+  try {
+    if (fs.existsSync(AUTH_FILE)) {
+      return fs.readFileSync(AUTH_FILE, 'utf8').trim();
+    }
+  } catch (e) {
+    log('Auth token read error:', e);
+  }
+  return null;
+}
+
+function getWSUrl() {
+  const token = readAuthToken();
+  if (token) {
+    return `${BACKEND_URL}?token=${encodeURIComponent(token)}`;
+  }
+  return BACKEND_URL;
 }
 
 function startBackend() {
@@ -76,7 +99,7 @@ function connectWS() {
   clearTimeout(wsRetry);
   if (ws) return;
   try {
-    ws = new WebSocket(BACKEND_URL);
+    ws = new WebSocket(getWSUrl());
   } catch {
     ws = null;
   }
@@ -179,8 +202,10 @@ app.whenReady().then(() => {
     });
   }
 
-  startBackend();
-  startNext();
+  if (!SERVICE_MODE) {
+    startBackend();
+    startNext();
+  }
   setTimeout(connectWS, 1500);
   waitForUI(() => {
     createWindow();

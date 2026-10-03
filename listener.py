@@ -53,6 +53,12 @@ def listen_for_command(timeout: float = 6.0, phrase_time_limit: float = 20.0) ->
         return ""
     except sr.RequestError:
         return ""
+    except OSError as e:
+        if "No Default Input Device" in str(e) or "No such device" in str(e):
+            log.warning("No microphone available (headless mode)")
+            return ""
+        log.error("Mic capture error: %s", e)
+        return ""
     except Exception as e:
         log.error("Mic capture error: %s", e)
         return ""

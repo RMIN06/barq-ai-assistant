@@ -10,12 +10,26 @@ from config import ELEVENLABS_API_KEY, ELEVEN_MODEL, ELEVEN_VOICE_ID
 
 client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
 
-# Initialize the pygame audio mixer once
-pygame.mixer.init()
+_mixer_initialized = False
+
+
+def _ensure_mixer():
+    global _mixer_initialized
+    if not _mixer_initialized:
+        try:
+            pygame.mixer.init()
+            _mixer_initialized = True
+        except Exception as e:
+            print(f"[Audio] Mixer init failed (headless mode?): {e}")
 
 
 async def speak(text: str):
     if not text or not text.strip():
+        return
+
+    _ensure_mixer()
+    if not _mixer_initialized:
+        print(f"[Barq (Text Fallback - No Audio)]: {text}")
         return
 
     try:

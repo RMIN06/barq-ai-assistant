@@ -5,7 +5,7 @@ import re
 import subprocess
 import threading
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -13,7 +13,7 @@ from config import GROQ_API_KEY, SLEEP_WORDS
 from listener import listen_for_command
 from speaker import speak
 from brain import think
-from wakeword import wait_for_wake
+from wakeword_v2 import wait_for_wake_v2
 from screen_context import (
     get_light_context,
     format_situation,
@@ -23,6 +23,7 @@ from screen_context import (
     screenshot_png_bytes,
 )
 from vision import describe_screen
+from auth import authenticate_websocket, get_auth_token
 
 # --- Open Interpreter (for complex system/code tasks) ---
 from interpreter import interpreter
@@ -33,6 +34,8 @@ interpreter.llm.model = "openai/llama-3.3-70b-versatile"
 interpreter.llm.api_base = "https://api.groq.com/openai/v1"
 interpreter.auto_run = True
 interpreter.system_message += "\nYou are Barq, Ibrahim's personal AI assistant."
+
+SERVICE_MODE = os.environ.get("BARQ_SERVICE_MODE", "0") == "1"
 
 
 class ConnectionManager:
@@ -252,8 +255,13 @@ def run_barq_engine():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    thread = threading.Thread(target=run_barq_engine, daemon=True)
-    thread.start()
+    if not SERVICE_MODE:
+        thread = threading.Thread(target=run_barq_engine, daemon=True)
+        thread.start()
+    else:
+        from barqlog import get_logger
+        log = get_logger("server")
+        log.info("Running in SERVICE MODE - engine runs in barq_service.py")
     yield
 
 
@@ -268,7 +276,9 @@ app.add_middleware(
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
+    if not await authenticate_websocket(websocket):
+        return
     await manager.connect(websocket)
     try:
         while True:
