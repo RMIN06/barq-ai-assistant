@@ -11,6 +11,7 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
   GROQ_API_KEY: "ci-placeholder-key"
+  DEEPGRAM_API_KEY: "ci-placeholder-key"
 
 jobs:
   # Python backend tests
