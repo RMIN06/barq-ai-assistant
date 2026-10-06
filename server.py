@@ -328,6 +328,8 @@ def run_barq_engine():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not get_auth_token():
+        generate_token()
     if not SERVICE_MODE:
         thread = threading.Thread(target=run_barq_engine, daemon=True)
         thread.start()
