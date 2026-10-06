@@ -343,7 +343,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -352,14 +352,162 @@ app.add_middleware(
 app.include_router(health_router)
 
 
+@app.get("/system-stats")
+async def system_stats(x_barq_token: str = Header(default="")):
+    if not verify_token(x_barq_token):
+        raise HTTPException(status_code=401)
+    disk = psutil.disk_usage(str(Path.home()))
+    return {
+        "cpu": psutil.cpu_percent(interval=None),
+        "memory": psutil.virtual_memory().percent,
+        "disk": disk.percent,
+        "uptime": int(__import__("time").time() - psutil.boot_time()),
+    }
+
+
+@app.get("/weather")
+async def weather(city: str, x_barq_token: str = Header(default="")):
+    if not verify_token(x_barq_token):
+        raise HTTPException(status_code=401)
+    try:
+        return await asyncio.to_thread(get_weather, city)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        from barqlog import get_logger
+        get_logger("weather").warning("Weather lookup failed: %s", exc)
+        raise HTTPException(status_code=502, detail="Weather service unavailable.") from exc
+
+
+@app.post("/wake")
+async def manual_wake(x_barq_token: str = Header(default="")):
+    """Manual wake endpoint for UI/service without microphone."""
+    if not verify_token(x_barq_token):
+        raise HTTPException(status_code=401)
+    manual_wake_event.set()
+    await manager.broadcast({"type": "wake"})
+    await manager.broadcast({
+        "type": "state", "aiState": "listening",
+        "transcript": "Manual wake triggered."
+    })
+    return {"status": "wake triggered"}
+
+
+@app.post("/sleep")
+async def manual_sleep(x_barq_token: str = Header(default="")):
+    """Manual sleep endpoint."""
+    if not verify_token(x_barq_token):
+        raise HTTPException(status_code=401)
+    manual_wake_event.clear()
+    manual_sleep_event.set()
+    await manager.broadcast({"type": "sleep"})
+    await manager.broadcast({
+        "type": "state", "aiState": "sleeping",
+        "transcript": "Manual sleep triggered."
+    })
+    return {"status": "sleep triggered"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
+    from barqlog import get_logger
+    log = get_logger("websocket")
     if not await authenticate_websocket(websocket):
         return
     await manager.connect(websocket)
     try:
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_text()
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "command":
+                    # Process command through the engine
+                    command = msg.get("text", "")
+                    if command and isinstance(command, str):
+                        if is_sleep_command(command):
+                            manual_sleep_event.set()
+                            await manager.broadcast({"type": "sleep"})
+                            continue
+                        spotify_query = requested_spotify_query(command)
+                        if spotify_query:
+                            await manager.broadcast({"type": "user", "text": command})
+                            outcome = await asyncio.to_thread(play_spotify_query, spotify_query)
+                            reply = outcome["message"]
+                            await asyncio.to_thread(record_result, command, reply)
+                            await manager.broadcast({"type": "ai", "text": reply})
+                            continue
+                        # Get SITREP context
+                        try:
+                            ctx = get_light_context()
+                            situation = format_situation(ctx)
+                        except Exception as e:
+                            print("[Screen ctx error]", e)
+                            record_error("screen_context")
+                            ctx, situation = {}, ""
+
+                        # Broadcast user command
+                        await manager.broadcast({"type": "user", "text": command})
+                        # Process through engine with SITREP
+                        result = await asyncio.to_thread(think, command, situation)
+                        reply = result.get("speech", "")
+                        # Execute actions
+                        intent = result.get("intent", "conversation")
+                        action = result.get("action", "")
+                        subject = result.get("subject", "")
+
+                        if intent == "filesystem":
+                            if not authorized_file_action(command, action, subject):
+                                res = {"ok": False, "message": "I need the exact file or folder name in your request before acting."}
+                            elif action == "create" and subject:
+                                if subject.endswith('/') or '.' not in Path(subject).name:
+                                    res = create_folder(subject)
+                                else:
+                                    res = create_file(subject)
+                            elif action == "delete" and subject:
+                                if subject.endswith('/') or '.' not in Path(subject).name:
+                                    preview = preview_delete(subject)
+                                    res = delete_folder(subject) if preview.get("ok") and preview["item_count"] == 0 else {"ok": False, "message": f"{subject} is missing or contains files. Review its contents first."}
+                                else:
+                                    res = delete_file(subject)
+                            elif action == "list" and subject:
+                                res = list_folder(subject)
+                            elif action == "read" and subject:
+                                res = read_file(subject)
+                            elif action == "write" and subject:
+                                res = create_file(subject, "")
+                            elif action == "preview" and subject:
+                                res = preview_delete(subject)
+                            else:
+                                res = {"ok": False, "message": f"Unknown filesystem action: {action}"}
+                            stop = res.get("message") or str(res)
+                            await asyncio.to_thread(record_result, command, stop)
+                            await manager.broadcast({"type": "ai", "text": stop, "sitrep": True})
+                            try:
+                                await speak(stop)
+                            except Exception:
+                                pass
+                        else:
+                            if intent == "browser":
+                                if action == "close" and subject:
+                                    outcome = close_browser_tab(subject)
+                                elif action == "open" and subject:
+                                    from urllib.parse import quote_plus
+                                    outcome = open_browser_tab("https://www.google.com/search?q=" + quote_plus(subject))
+                                else:
+                                    outcome = {"message": "Visible browser windows: " + ", ".join(ctx.get("open_browser_tabs", [])[:8])}
+                                reply = outcome["message"]
+                            elif intent == "screen":
+                                reply = await asyncio.to_thread(describe_screen, screenshot_png_bytes())
+                            elif intent == "app":
+                                reply = open_app(subject)["message"] if action == "open" else "Please name an app to open."
+                            elif intent == "system":
+                                reply = "Automatic code execution is disabled. I can help plan the task."
+                            if intent != "conversation":
+                                await asyncio.to_thread(record_result, command, reply)
+                            await manager.broadcast({"type": "ai", "text": reply})
+                            await speak(reply)
+            except Exception as e:
+                log.error(f"WebSocket command error: {e}")
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
