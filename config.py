@@ -34,8 +34,8 @@ WAKE_WORDS = [
 SLEEP_WORDS = ["go to sleep", "sleep mode", "standby", "shut down", "goodnight", "turn off"]
 
 # --- Model IDs ---
-LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.3-70b-versatile")
-VISION_MODEL = os.environ.get("VISION_MODEL", "llama-3.2-90b-vision-preview")
+LLM_MODEL = os.environ.get("LLM_MODEL", "openai/gpt-oss-120b")
+VISION_MODEL = os.environ.get("VISION_MODEL", "qwen/qwen3.8-27b")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "whisper-large-v3-turbo")
 
 # --- Data files ---
