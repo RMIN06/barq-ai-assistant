@@ -157,7 +157,7 @@ async def readiness():
     """Kubernetes-style readiness probe - checks all critical dependencies."""
     checks = {
         "groq": check_groq_api(),
-        "elevenlabs": check_elevenlabs_api(),
+        "deepgram": check_deepgram_api(),
         "microphone": check_microphone(),
         "speaker": check_speaker(),
         "disk": check_disk_space(),
@@ -195,7 +195,7 @@ async def health_root():
     """Combined health check."""
     checks = {
         "groq": check_groq_api(),
-        "elevenlabs": check_elevenlabs_api(),
+        "deepgram": check_deepgram_api(),
         "microphone": check_microphone(),
         "speaker": check_speaker(),
         "disk": check_disk_space(),
