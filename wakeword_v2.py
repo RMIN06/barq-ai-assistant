@@ -1,14 +1,18 @@
 """
-Wake Word Detection v2 - Hybrid Pipeline:
+Wake Word Detection v2 - Local-First Pipeline (No API calls for wake):
 1. Silero VAD (Voice Activity Detection) - filters silence
-2. Porcupine (Primary) - <50ms hardware-accelerated keyword spotting
-3. Groq Whisper (Confirmation) - High accuracy verification
+2. Porcupine (Primary, optional) - <50ms hardware-accelerated keyword spotting
+3. VAD + Energy Threshold (Fallback) - Local voice activity detection
+4. Local Whisper.cpp (Optional) - For confirmation if model available
 """
 import time
 import numpy as np
 import threading
 from pathlib import Path
 from collections import deque
+import io
+import wave
+import re
 
 from config import (
     PORCUPINE_ACCESS_KEY,
@@ -24,6 +28,9 @@ VAD_SAMPLE_RATE = 16000
 VAD_FRAME_MS = 30
 VAD_FRAME_SIZE = int(VAD_SAMPLE_RATE * VAD_FRAME_MS / 1000)
 PORCUPINE_SAMPLE_RATE = 16000
+
+BASE_DIR = Path(__file__).resolve().parent
+LOCAL_WHISPER_MODEL = BASE_DIR / "models" / "ggml-tiny.en.bin"
 
 _silero_model = None
 _silero_utils = None
