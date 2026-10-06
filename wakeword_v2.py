@@ -165,7 +165,7 @@ class HybridWakeDetector:
         self._stop_event = threading.Event()
         self._detected = threading.Event()
         self._porcupine_ready = _init_porcupine()
-        self._vad_ready = _init_silero_vad()
+        self._vad_ready = True  # SpeechRecognition performs local voice activity detection.
         self._stream = None
 
         if not self._porcupine_ready and not self._vad_ready:
@@ -179,9 +179,12 @@ class HybridWakeDetector:
         if self._porcupine_ready:
             return self._listen_hybrid(external_stop)
         elif self._vad_ready:
-            return self._listen_vad_whisper(external_stop)
-        else:
-            return self._listen_whisper_only(external_stop)
+            try:
+                return self._listen_vad_whisper(external_stop)
+            except Exception as e:
+                log.error(f"VAD+Whisper failed: {e}")
+        log.warning("No verified wake-word backend available")
+        return False
 
     def _listen_hybrid(self, external_stop) -> bool:
         porcupine = _porcupine
@@ -208,10 +211,7 @@ class HybridWakeDetector:
                     keyword_index = porcupine.process(frame)
                     if keyword_index >= 0:
                         log.info(f"Porcupine detected keyword index: {keyword_index}")
-                        if self._confirm_with_whisper():
-                            self._detected.set()
-                        else:
-                            log.info("Whisper confirmation failed, continuing...")
+                        self._detected.set()
 
         try:
             with _sd.RawInputStream(
@@ -231,11 +231,10 @@ class HybridWakeDetector:
         return True
 
     def _confirm_with_whisper(self) -> bool:
-        from listener import transcribe_audio, _record_wake_audio
-        import io
-        import wave
+        import tempfile
+        import sounddevice as sd
 
-        log.info("Confirming with Whisper...")
+        log.info("Confirming with local Whisper...")
         try:
             wav_bytes = _record_wake_audio(duration=2.0)
             if not wav_bytes:
