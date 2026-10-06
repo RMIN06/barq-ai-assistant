@@ -42,7 +42,6 @@ export default function JarvisOrb({ aiState }: OrbProps) {
     const count = 420;
     for (let i = 0; i < count; i++) {
       const radius = 5.5 + (i / count) * 9;
-      const tilt = Math.cos(i * 12.9898) ;
       const a = i * 2.4;
       pts.push(
         Math.cos(a) * radius,
