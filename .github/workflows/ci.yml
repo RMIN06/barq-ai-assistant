@@ -10,6 +10,7 @@ on:
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
+  GROQ_API_KEY: "ci-placeholder-key"
 
 jobs:
   # Python backend tests
@@ -32,26 +33,23 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          .\venv\Scripts\python.exe -m pip install -r requirements-test.txt
-          .\venv\Scripts\python.exe -m pip install -e .
+          python -m pip install -r requirements.txt -r requirements-test.txt
 
       - name: Run backend tests
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          .\venv\Scripts\python.exe -m pytest tests/ -v --tb=short
+          python -m pytest tests/ -q -p no:cacheprovider
 
       - name: Run type checking (mypy)
+        continue-on-error: true
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          .\venv\Scripts\python.exe -m pip install mypy
-          .\venv\Scripts\python.exe -m mypy --ignore-missing-imports server.py brain.py listener.py speaker.py wakeword_v2.py config.py screen_context.py vision.py barqlog.py auth.py health.py barq_service.py display_manager.py memory_v2.py || true
+          python -m pip install mypy
+          python -m mypy --ignore-missing-imports server.py brain.py listener.py speaker.py wakeword_v2.py config.py screen_context.py vision.py barqlog.py auth.py health.py barq_service.py display_manager.py memory_v2.py
 
       - name: Run security scan (bandit)
+        continue-on-error: true
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          .\venv\Scripts\python.exe -m pip install bandit
-          .\venv\Scripts\python.exe -m bandit -r . -x tests/ || true
+          python -m pip install bandit
+          python -m bandit -r . -x tests/ -q
 
   # Frontend tests
   test-frontend:
@@ -148,8 +146,7 @@ jobs:
 
       - name: Install all dependencies
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          .\venv\Scripts\python.exe -m pip install -r requirements-test.txt
+          python -m pip install -r requirements.txt -r requirements-test.txt
           cd barq_ui
           npm ci
           cd ../desktop
@@ -157,16 +154,14 @@ jobs:
 
       - name: Start backend
         run: |
-          cd "D:\Barq Assistant\barq-ai-assistant"
-          Start-Process .\venv\Scripts\python.exe -ArgumentList "-m", "uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8000" -WindowStyle Hidden
+          Start-Process python -ArgumentList "-m", "uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8000" -WindowStyle Hidden
           Start-Sleep 5
 
       - name: Test health endpoints
         run: |
           $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health/live"
           Write-Host "Live: $($response.status)"
-          $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/health/ready"
-          Write-Host "Ready: $($response.status)"
+          # Readiness depends on provider keys and audio devices unavailable in CI.
 
       - name: Test WebSocket auth
         run: |
@@ -175,7 +170,7 @@ jobs:
 
       - name: Cleanup
         run: |
-          Get-Process | Where-Object {$_.ProcessName -match 'python|uvicorn'} | Stop-Process -Force
+          Write-Host "Runner cleanup handles the backend process."
 
   # Release
   release:
