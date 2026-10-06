@@ -144,6 +144,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: |
+            barq_ui/package-lock.json
+            desktop/package-lock.json
 
       - name: Install all dependencies
         run: |
