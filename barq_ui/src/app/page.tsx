@@ -56,16 +56,16 @@ export default function Home() {
       };
       ws.onmessage = (ev) => {
         try {
-          const data = JSON.parse(ev.data) as WireMsg;
-          if (data.aiState) setAiState(data.aiState);
-          if (data.type === 'wake') setExpanded(true);
-          if (data.type === 'sleep') setExpanded(false);
+          const data = JSON.parse(ev.data) as { type?: string; text?: string; sitrep?: boolean; aiState?: string };
+          if (data.type === 'wake') setIsListening(true);
+          if (data.type === 'sleep') setIsListening(false);
+          if (data.type === 'state' && data.aiState) setAiState(data.aiState === 'sleeping' ? 'standby' : data.aiState);
           const text = data.text;
           if (text) {
             const sender: 'you' | 'barq' = data.type === 'user' ? 'you' : 'barq';
             setMessages((m) => [
-              ...m.slice(-60),
-              { id: `${sender}-${Date.now()}`, sender, text, sitrep: Boolean(data.sitrep) },
+              ...m.slice(-100),
+              { id: `${sender}-${Date.now()}`, sender, text: data.text || '', sitrep: Boolean(data.sitrep), timestamp: Date.now() },
             ]);
           }
         } catch {
@@ -75,6 +75,12 @@ export default function Home() {
     };
     open();
     const t = setInterval(() => logRef.current?.scrollTo({ top: 1e6, behavior: 'smooth' }), 400);
+
+    const statusInterval = setInterval(() => setClock(new Date().toLocaleString()), 1000);
+    const pollStats = async () => { const auth = localStorage.getItem('barq_auth_token') || ''; if (!auth) return; try { const response = await fetch('http://127.0.0.1:8080/system-stats', { headers: { 'X-Barq-Token': auth } }); if (response.ok) setStats(await response.json()); } catch { setStats(null); } };
+    void pollStats();
+    const statsInterval = setInterval(pollStats, 5000);
+
     return () => {
       ws?.close();
       clearTimeout(retry);
