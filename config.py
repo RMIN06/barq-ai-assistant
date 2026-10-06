@@ -14,11 +14,11 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # --- API keys (set via .env / environment variables) ---
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-ELEVENLABS_API_KEY = os.environ.get("ELEVENLABS_API_KEY", "")
+DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "")
 
-# --- ElevenLabs voice ---
-ELEVEN_VOICE_ID = os.environ.get("ELEVEN_VOICE_ID", "pNInz6obpgDQGcFmaJgB")
-ELEVEN_MODEL = os.environ.get("ELEVEN_MODEL", "eleven_multilingual_v2")
+# --- Deepgram TTS voice ---
+DEEPGRAM_VOICE = os.environ.get("DEEPGRAM_VOICE", "aura-asteria-en")
+DEEPGRAM_MODEL = os.environ.get("DEEPGRAM_MODEL", "aura-asteria-en")
 
 # --- Picovoice (wake word). Optional: set PORCUPINE_ACCESS_KEY in .env ---
 # A custom "Barq" model file can be dropped at PORCUPINE_MODEL_PATH for an exact match.
