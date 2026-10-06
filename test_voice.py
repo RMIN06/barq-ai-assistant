@@ -23,7 +23,7 @@ def list_devices():
     print("=" * 60)
 
 
-def test_capture():
+def capture_audio():
     from listener import transcribe_audio
     import speech_recognition as sr
 
@@ -47,7 +47,7 @@ def main():
     print(f"Groq key present: {bool(GROQ_API_KEY)}")
     print(f"Whisper model: {WHISPER_MODEL}")
     list_devices()
-    text = test_capture()
+    text = capture_audio()
     if text:
         wake = ("jarvis", "barq", "bark", "hey barq")
         print("\nWake-word check:", "MATCH" if any(w in text for w in wake) else "no match")
