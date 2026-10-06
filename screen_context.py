@@ -180,3 +180,111 @@ def screenshot_png_bytes(max_width=1100) -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+# --- File System Operations ---
+
+def _resolve_path(path_str: str) -> Path:
+    """Resolve a path string, expanding ~ and environment variables."""
+    path = Path(path_str).expanduser()
+    # If relative, make it relative to user's home
+    if not path.is_absolute():
+        path = Path.home() / path
+    return path.resolve()
+
+
+def create_folder(path_str: str) -> dict:
+    """Create a folder at the specified path."""
+    try:
+        path = _resolve_path(path_str)
+        path.mkdir(parents=True, exist_ok=True)
+        return {"ok": True, "message": f"Created folder: {path}"}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to create folder: {e}"}
+
+
+def delete_folder(path_str: str) -> dict:
+    """Delete a folder at the specified path. Requires exact path match."""
+    try:
+        path = _resolve_path(path_str)
+        if path.exists() and path.is_dir() and not path.is_symlink():
+            if any(path.iterdir()):
+                return {"ok": False, "message": f"Folder is not empty: {path}. Review the contents first."}
+            path.rmdir()
+            return {"ok": True, "message": f"Deleted folder: {path}"}
+        return {"ok": False, "message": f"Folder not found or not a directory: {path}"}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to delete folder: {e}"}
+
+
+def preview_delete(path_str: str) -> dict:
+    """Preview what would be deleted without actually deleting."""
+    try:
+        path = _resolve_path(path_str)
+        if path.exists() and path.is_dir():
+            items = list(path.iterdir())
+            return {
+                "ok": True,
+                "path": str(path),
+                "item_count": len(items),
+                "items": [{"name": i.name, "type": "folder" if i.is_dir() else "file"} for i in items[:20]],
+                "warning": "This is a preview. Use delete_folder to actually delete."
+            }
+        return {"ok": False, "message": f"Folder not found or not a directory: {path}"}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to preview: {e}"}
+
+
+def list_folder(path_str: str) -> dict:
+    """List contents of a folder."""
+    try:
+        path = _resolve_path(path_str)
+        if not path.exists():
+            return {"ok": False, "message": f"Path not found: {path}"}
+        items = []
+        for item in path.iterdir():
+            items.append({
+                "name": item.name,
+                "type": "folder" if item.is_dir() else "file",
+                "size": item.stat().st_size if item.is_file() else None
+            })
+        return {"ok": True, "items": items, "path": str(path)}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to list folder: {e}"}
+
+
+def create_file(path_str: str, content: str = "") -> dict:
+    """Create a file with optional content."""
+    try:
+        path = _resolve_path(path_str)
+        if path.exists():
+            return {"ok": False, "message": f"File already exists: {path}"}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return {"ok": True, "message": f"Created file: {path}"}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to create file: {e}"}
+
+
+def read_file(path_str: str) -> dict:
+    """Read a file's content."""
+    try:
+        path = _resolve_path(path_str)
+        if not path.exists():
+            return {"ok": False, "message": f"File not found: {path}"}
+        content = path.read_text(encoding="utf-8")
+        return {"ok": True, "content": content, "path": str(path)}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to read file: {e}"}
+
+
+def delete_file(path_str: str) -> dict:
+    """Delete a file."""
+    try:
+        path = _resolve_path(path_str)
+        if path.exists():
+            path.unlink()
+            return {"ok": True, "message": f"Deleted file: {path}"}
+        return {"ok": False, "message": f"File not found: {path}"}
+    except Exception as e:
+        return {"ok": False, "message": f"Failed to delete file: {e}"}
