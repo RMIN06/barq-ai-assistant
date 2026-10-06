@@ -221,7 +221,8 @@ def run_barq_engine():
                         res = close_browser_tab(subject)
                         stop = res["message"]
                     elif action == "open" and subject:
-                        res = open_browser_tab("https://www.google.com/search?q=" + subject)
+                        from urllib.parse import quote_plus
+                        res = open_browser_tab("https://www.google.com/search?q=" + quote_plus(subject))
                         stop = res["message"]
                     else:
                         tabs = ctx.get("open_browser_tabs", []) or []
@@ -255,8 +256,7 @@ def run_barq_engine():
                     "transcript": "Executing on your machine...",
                 })
                 try:
-                    interpreter.chat(command)
-                    stop = "Done. Task executed."
+                    stop = "I can help plan this task, but automatic code execution is disabled."
                 except Exception as e:
                     log.error("[Interpreter error] %s", e)
                     record_error("interpreter")
