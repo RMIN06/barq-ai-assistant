@@ -90,15 +90,25 @@ _speaker_cache = {"result": None, "timestamp": 0}
 
 
 def check_speaker() -> Dict[str, Any]:
-    """Check speaker/audio output availability."""
+    """Check speaker/audio output availability (cached)."""
+    global _speaker_cache
+    import time
+    now = time.time()
+    if _speaker_cache["result"] and (now - _speaker_cache["timestamp"]) < 300:
+        return _speaker_cache["result"]
+
     try:
         import pygame
         pygame.mixer.init()
-        return {"status": "healthy", "message": "Audio output available"}
+        result = {"status": "healthy", "message": "Audio output available"}
     except Exception as e:
         if "WASAPI" in str(e) or "audio endpoint" in str(e):
-            return {"status": "unavailable", "message": "No audio output (headless mode)"}
-        return {"status": "unhealthy", "message": str(e)}
+            result = {"status": "unavailable", "message": "No audio output (headless mode)"}
+        else:
+            result = {"status": "unhealthy", "message": str(e)}
+
+    _speaker_cache = {"result": result, "timestamp": time.time()}
+    return result
 
 
 def check_disk_space() -> Dict[str, Any]:
