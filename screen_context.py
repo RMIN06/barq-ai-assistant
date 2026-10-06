@@ -139,14 +139,35 @@ _APP_SHORTCUTS = {
 
 
 def open_app(app_name: str) -> dict:
-    target = _APP_SHORTCUTS.get((app_name or "").lower())
-    if not target:
-        return {"ok": False, "message": f"No shortcut for {app_name} yet."}
-    if target.startswith("ms-"):
+    name = (app_name or "").strip()
+    if not name or any(c in name for c in "\\/:*?\"<>|"):
+        return {"ok": False, "message": "Please name one application to open."}
+    target = _APP_SHORTCUTS.get(name.casefold())
+    if target and target.startswith("ms-"):
         subprocess.Popen(["cmd", "/c", "start", "", target])
-    else:
+    elif target:
         subprocess.Popen(target)
-    return {"ok": True, "message": f"Opening {app_name}."}
+    else:
+        # Windows Store apps have an AppUserModelID rather than a PATH shortcut.
+        script = "Get-StartApps | Select-Object Name,AppID | ConvertTo-Json -Compress"
+        try:
+            raw = subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, text=True, timeout=8, check=True).stdout
+            apps = json.loads(raw)
+            if isinstance(apps, dict):
+                apps = [apps]
+            matches = [item for item in apps if item.get("Name", "").casefold() == name.casefold()]
+            if not matches:
+                matches = [item for item in apps if name.casefold() in item.get("Name", "").casefold()]
+            if matches:
+                subprocess.Popen(["explorer.exe", "shell:AppsFolder\\" + matches[0]["AppID"]])
+                return {"ok": True, "message": f"Opening {matches[0]['Name']}."}
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+        executable = shutil.which(name)
+        if not executable:
+            return {"ok": False, "message": f"I could not find {name} among installed apps or on PATH."}
+        subprocess.Popen([executable])
+    return {"ok": True, "message": f"Opening {name}."}
 
 
 def screenshot_png_bytes(max_width=1100) -> bytes:
