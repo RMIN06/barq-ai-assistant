@@ -255,9 +255,19 @@ app.whenReady().then(() => {
     });
   }
 
+  // Register global shortcut for manual wake (Ctrl+Shift+Space)
+  globalShortcut.register('Control+Shift+Space', () => {
+    log('Global shortcut triggered - manual wake');
+    manualWake();
+  });
+
   if (!SERVICE_MODE) {
     startBackend();
     startNext();
+    setInterval(() => {
+      startBackend();
+      startNext();
+    }, 10000);
   }
   setTimeout(connectWS, 1500);
   waitForUI(() => {
