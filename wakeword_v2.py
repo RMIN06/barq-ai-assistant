@@ -265,21 +265,136 @@ class HybridWakeDetector:
                 log.info(f"WAKE CONFIRMED: {text!r}")
             return matched
         except Exception as e:
-            log.error(f"Whisper confirmation error: {e}")
+            log.error(f"Local Whisper confirmation error: {e}")
             return False
 
     def _listen_vad_whisper(self, external_stop) -> bool:
-        from listener import short_phrase_for_wake
-        log.info("VAD + Whisper fallback armed")
-        while True:
-            if self._detected.is_set() or (external_stop and external_stop.is_set()):
-                return self._detected.is_set()
-            phrase = short_phrase_for_wake()
-            if phrase and _substrings_match(phrase, WAKE_WORDS):
-                log.info(f"VAD+Whisper WAKE: {phrase!r}")
-                self._detected.set()
-                return True
-            time.sleep(0.1)
+        """Wake detection using SpeechRecognition with explicit device selection."""
+        import speech_recognition as sr
+        import time
+
+        log.info("SpeechRecognition VAD + Groq Whisper wake detection armed")
+        recognizer = sr.Recognizer()
+        recognizer.energy_threshold = 300
+        recognizer.dynamic_energy_threshold = True
+        recognizer.pause_threshold = 0.8
+
+        wake_words_lower = [w.lower() for w in WAKE_WORDS]
+        consecutive_failures = 0
+        max_consecutive_failures = 5
+
+        # Find working microphone
+        mic_index = self._find_working_microphone()
+        if mic_index is None:
+            log.error("No working microphone found")
+            return False
+
+        log.info(f"Using microphone device index: {mic_index}")
+
+        try:
+            while not self._detected.is_set():
+                if external_stop and external_stop.is_set():
+                    return False
+
+                try:
+                    with sr.Microphone(device_index=mic_index) as source:
+                        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+                        audio = recognizer.listen(source, timeout=2.0, phrase_time_limit=4.0)
+                    from listener import has_audible_speech
+                    if not has_audible_speech(audio):
+                        continue
+
+                    try:
+                        from listener import transcribe_audio
+                        text = transcribe_audio(audio.get_wav_data())
+                        if _substrings_match(text, wake_words_lower):
+                            log.info("Wake word detected")
+                            self._detected.set()
+                            return True
+                    except Exception as e:
+                        log.warning("Wake transcription failed: %s", e)
+                        consecutive_failures += 1
+                        if consecutive_failures >= max_consecutive_failures:
+                            log.error("Too many wake transcription failures")
+                            break
+                        time.sleep(2)
+                        continue
+
+                except sr.WaitTimeoutError:
+                    continue
+                except Exception as e:
+                    log.error(f"Microphone error: {e}")
+                    consecutive_failures += 1
+                    if consecutive_failures >= max_consecutive_failures:
+                        break
+                    time.sleep(1)
+                    continue
+
+                consecutive_failures = 0  # Reset on successful listen
+
+        except Exception as e:
+            log.error(f"SpeechRecognition wake error: {e}")
+
+        return False
+
+    def _find_working_microphone(self) -> int | None:
+        """Find a working microphone device index."""
+        import speech_recognition as sr
+        for index, name in enumerate(sr.Microphone.list_microphone_names()):
+            try:
+                with sr.Microphone(device_index=index) as source:
+                    r = sr.Recognizer()
+                    r.adjust_for_ambient_noise(source, duration=0.2)
+                log.info(f"Found working microphone: {name} (index {index})")
+                return index
+            except Exception:
+                continue
+        return None
+
+    def _listen_energy_fallback(self, external_stop) -> bool:
+        """Energy-based fallback using sounddevice."""
+        import sounddevice as sd
+        import numpy as np
+
+        log.info("Energy fallback armed (sounddevice)")
+        sample_rate = 16000
+        frame_duration = 1.0
+        frame_samples = int(sample_rate * frame_duration)
+        energy_threshold = 0.015
+        min_speech_frames = 2
+        max_silence_frames = 5
+
+        speech_frames = 0
+        silence_frames = 0
+
+        try:
+            while not self._detected.is_set():
+                if external_stop and external_stop.is_set():
+                    return False
+
+                recording = sd.rec(frame_samples, samplerate=sample_rate, channels=1, dtype='float32')
+                sd.wait()
+
+                frame = recording[:, 0] if len(recording.shape) > 1 else recording
+                rms = np.sqrt(np.mean(frame.astype(np.float32)**2))
+
+                if rms > energy_threshold:
+                    speech_frames += 1
+                    silence_frames = 0
+                    if speech_frames >= min_speech_frames:
+                        log.info(f"Energy WAKE detected (rms={rms:.4f})")
+                        self._detected.set()
+                        return True
+                else:
+                    silence_frames += 1
+                    if silence_frames > max_silence_frames:
+                        speech_frames = 0
+                        silence_frames = 0
+
+        except Exception as e:
+            log.error(f"Energy fallback error: {e}")
+            return False
+        return True
 
     def _listen_whisper_only(self, external_stop) -> bool:
         from listener import short_phrase_for_wake
