@@ -145,7 +145,16 @@ def run_barq_engine():
                 await manager.broadcast({"type": "sleep"})
                 continue
             if not command:
+                if time.monotonic() - last_command_at > 45:
+                    is_awake = False
+                    await manager.broadcast({"type": "sleep"})
                 continue
+            if is_non_request(command):
+                continue
+            if command.casefold().strip() == last_command_text and time.monotonic() - last_command_at < 15:
+                continue
+            last_command_text = command.casefold().strip()
+            last_command_at = time.monotonic()
             log.info("Command: %r", command)
             await manager.broadcast({"type": "user", "text": command})
 
