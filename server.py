@@ -67,6 +67,8 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+manual_wake_event = threading.Event()
+manual_sleep_event = threading.Event()
 
 
 def fast_route_execution(command: str) -> str | None:
@@ -99,12 +101,9 @@ def run_barq_engine():
             "type": "state", "aiState": "sleeping",
             "transcript": "Sleeping. Say the wake word to activate me.",
         })
-        try:
-            await speak("Systems initialized. I am here, Ibrahim.")
-        except Exception as e:
-            log.error("Init speech error: %s", e)
-
         is_awake = False
+        last_command_at = 0.0
+        last_command_text = ""
 
         while True:
             # ---------------- STANDBY / WAKE WORD ----------------
