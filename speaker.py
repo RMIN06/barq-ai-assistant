@@ -32,21 +32,42 @@ async def speak(text: str):
         print(f"[Barq (Text Fallback - No Audio)]: {text}")
         return
 
-    try:
-        audio_generator = client.text_to_speech.convert(
-            text=text,
-            voice_id=ELEVEN_VOICE_ID,
-            model_id=ELEVEN_MODEL,
-            output_format="mp3_44100_128",
-        )
-        audio_bytes = b"".join(audio_generator)
-        audio_stream = io.BytesIO(audio_bytes)
+    if not DEEPGRAM_API_KEY:
+        print(f"[Barq (Text Fallback - No Deepgram Key)]: {text}")
+        return
 
+    try:
+        headers = {
+            "Authorization": f"Token {DEEPGRAM_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        params = {
+            "model": DEEPGRAM_MODEL or "aura-asteria-en",
+        }
+        payload = {"text": text}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                DEEPGRAM_TTS_URL,
+                headers=headers,
+                params=params,
+                json=payload,
+            ) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    print(f"[Deepgram TTS Error]: {resp.status} - {error_text}")
+                    print(f"[Barq (Text Fallback)]: {text}")
+                    return
+
+                audio_bytes = await resp.read()
+
+        audio_stream = io.BytesIO(audio_bytes)
         pygame.mixer.music.load(audio_stream)
         pygame.mixer.music.play()
 
         while pygame.mixer.music.get_busy():
             await asyncio.sleep(0.1)
+
     except Exception as e:
         print(f"[ElevenLabs Voice Error]: {e}")
         print(f"[Barq (Text Fallback)]: {text}")
