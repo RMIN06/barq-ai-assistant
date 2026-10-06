@@ -136,7 +136,7 @@ def think(prompt: str, situation: str = "", last_speech: str = "") -> dict:
         completion = client.chat.completions.create(
             messages=messages,
             model=LLM_MODEL,
-            temperature=0.6,
+            temperature=0.2,
             response_format={"type": "json_object"},
         )
         data = json.loads(completion.choices[0].message.content)
@@ -147,9 +147,17 @@ def think(prompt: str, situation: str = "", last_speech: str = "") -> dict:
             "action": data.get("action") or "",
             "subject": str(data.get("subject") or "").lower(),
         }
-        add_turn(mem, "user", prompt)
-        add_turn(mem, "assistant", out["speech"])
-        save_memory(mem)
+        # Action results are recorded by the caller after verification. A model's
+        # proposed action or pre-action speech is not evidence of completion.
+        if out["intent"] == "conversation":
+            add_turn(mem, "user", prompt)
+            add_turn(mem, "assistant", out["speech"])
+            save_memory(mem)
+            try:
+                vector_memory.add_conversation(prompt, out["speech"])
+            except Exception as e:
+                print(f"[Vector memory save error]: {e}")
+
         return out
     except Exception as e:
         print(f"[Brain error]: {e}")
