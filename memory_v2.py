@@ -62,6 +62,8 @@ class VectorMemory:
             self._initialized = False
 
     def is_available(self) -> bool:
+        if not self._initialized:
+            self._init()
         return VECTOR_AVAILABLE and self._initialized
 
     def add_conversation(self, user_msg: str, assistant_msg: str, metadata: Dict = None) -> str:
