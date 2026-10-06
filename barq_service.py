@@ -119,18 +119,40 @@ def kill_ui():
                 log.error(f"Error killing UI: {e}")
             UI_PROCESS = None
 
-
 async def service_engine_loop():
     global ENGINE_RUNNING
     ENGINE_RUNNING = True
-    log.info("Service engine started - zero memory mode active")
+    print(">>> service_engine_loop() started")
+    log.info("=== SERVICE ENGINE STARTED - ZERO MEMORY MODE ACTIVE ===")
 
     is_awake = False
+    last_command_at = 0.0
+    last_command_text = ""
     ui_spawned = False
 
+    # Check microphone availability at startup
+    from health import check_microphone
+    mic_check = check_microphone()
+    if mic_check["status"] in ("unavailable", "unhealthy"):
+        log.warning(f"Microphone not available: {mic_check['message']}. Wake detection disabled.")
+        log.info("Use WebSocket/API to wake manually.")
+        wake_enabled = False
+    else:
+        log.info(f"Microphone ready: {mic_check['message']}")
+        wake_enabled = True
+
+    print(">>> Entering main engine loop...")
+    log.info("Entering main engine loop...")
     while ENGINE_RUNNING:
+        log.debug(f"Loop iteration - is_awake={is_awake}, ui_spawned={ui_spawned}")
+
         if not is_awake:
-            log.debug("Standby - waiting for wake word...")
+            if not wake_enabled:
+                log.info("Wake detection disabled - waiting for manual wake signal...")
+                await asyncio.sleep(5)
+                continue
+
+            log.info("Standby - waiting for wake word...")
             try:
                 woken = await asyncio.to_thread(wait_for_wake_v2)
             except Exception as e:
