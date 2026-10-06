@@ -184,17 +184,21 @@ function connectWS() {
 }
 
 function createWindow() {
+  const { screen } = require('electron');
+  const display = screen.getPrimaryDisplay().workArea;
+  const width = Math.min(1320, display.width - 40);
+  const height = Math.min(850, display.height - 40);
   win = new BrowserWindow({
-    width: 540,
-    height: 620,
+    width,
+    height,
     minWidth: 420,
     minHeight: 520,
-    show: !START_HIDDEN,
-    frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
+    show: !START_HIDDEN || pendingWake,
+    frame: true,
+    transparent: false,
+    backgroundColor: '#050d15',
     resizable: true,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     skipTaskbar: false,
     webPreferences: {
       nodeIntegration: false,
@@ -203,10 +207,8 @@ function createWindow() {
     },
   });
 
-  const { screen } = require('electron');
-  const display = screen.getPrimaryDisplay().workArea;
-  const [x, y] = [display.x + display.width - 540 - 20, display.y + display.height - 620 - 20];
-  win.setBounds({ x, y, width: 540, height: 620 });
+  const [x, y] = [display.x + Math.floor((display.width - width) / 2), display.y + Math.floor((display.height - height) / 2)];
+  win.setBounds({ x, y, width, height });
 
   win.loadURL(UI_URL);
 
