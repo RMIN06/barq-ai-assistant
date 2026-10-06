@@ -173,51 +173,42 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#030510] to-[#050818]" />
       <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(0,255,255,0.07) 0%, transparent 70%)' }} />
 
-      {/* center stage */}
-      <div className="relative z-10 flex h-full flex-1 flex-col items-center justify-center">
-        <div className="relative h-[38vmin] w-[38vmin]">
-          <Canvas camera={{ position: [0, 0, 6], fov: 50 }} dpr={[1, 2]}>
-            <JarvisOrb aiState={aiState} />
-          </Canvas>
-        </div>
+      {/* Scanlines effect */}
+      <div className="absolute inset-0 pointer-events-none opacity-10" style={{
+        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.03) 2px, rgba(0,255,255,0.03) 4px)',
+        backgroundSize: '100% 4px'
+      }} />
 
-        {/* status line */}
-        <div className="mt-3 flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur-xl">
-          <motion.span
-            key={aiState}
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-            className={`h-2 w-2 rounded-full ${
-              aiState === 'sleeping' ? 'bg-gray-500' :
-              aiState === 'listening' ? 'bg-cyan-400' :
-              aiState === 'thinking' ? 'bg-amber-400' :
-              aiState === 'working' ? 'bg-purple-400' : 'bg-blue-500'
-            } ${speaking || aiState === 'listening' ? 'animate-pulse' : ''}`}
-          />
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-gray-300">
-            {STATE_LABEL[aiState] || aiState}
+      {/* Header bar */}
+      <div className="absolute top-0 left-0 right-0 h-10 border-b border-cyan-400/20 bg-[#020412]/90 backdrop-blur-sm flex items-center justify-between px-4 z-20">
+        <div className="flex items-center gap-3 text-cyan-400 font-mono text-xs">
+          <span className="relative">
+            <span className="relative inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse mr-2" />
+            J.A.R.V.I.S
           </span>
-          {!connected && (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-rose-400">
-              offline
-            </span>
-          )}
+          <span className="text-gray-500 mx-2">|</span>
+          <span className="text-green-400">{connected ? aiState.toUpperCase() : 'OFFLINE'}</span>
+          <span className="text-gray-500 mx-2">|</span>
+          <span className="text-gray-400 font-mono"><Clock3 size={12} className="inline"/> {clock}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setSettingsOpen(v => !v)} aria-label="Settings" className="rounded border border-cyan-900 p-1"><Settings2 size={16}/></button>
+          <button
+            onClick={wakeBarq}
+            className="px-3 py-1 text-xs font-mono bg-cyan-500/20 border border-cyan-500/30 rounded hover:bg-cyan-500/30 transition-colors"
+          >
+            WAKE
+          </button>
+          <button
+            onClick={sleepBarq}
+            className="px-3 py-1 text-xs font-mono bg-red-500/20 border border-red-500/30 rounded hover:bg-red-500/30 transition-colors"
+          >
+            SLEEP
+          </button>
         </div>
       </div>
 
-      {/* expand toggle */}
-      <motion.button
-        onClick={() => setExpanded((v) => !v)}
-        initial={false}
-        whileTap={{ scale: 0.9 }}
-        style={{ WebkitAppRegion: 'no-drag' } as AppRegionStyle}
-        className="absolute right-5 top-5 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-mono uppercase tracking-widest text-cyan-300 backdrop-blur-xl hover:bg-white/10"
-      >
-        <Activity className="h-3 w-3" />
-        Log
-        {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-      </motion.button>
+      {settingsOpen && <div className="absolute right-4 top-12 z-30 rounded border border-cyan-800 bg-[#102532] p-4 text-sm">Wake word: Barq or Jarvis<br/>Camera starts only when enabled.<br/>Conversation is kept on this device.<label className="mt-3 block">Weather city<input value={cityDraft} onChange={e => setCityDraft(e.target.value)} placeholder="City name" className="mt-1 block w-full rounded border border-cyan-700 bg-[#06141d] p-2" /></label><button className="mt-2 rounded bg-cyan-700 px-3 py-1" onClick={() => { const city = cityDraft.trim(); localStorage.setItem('barq_weather_city', city); setWeatherCity(city); setWeatherRefresh(v => v + 1); }}>Save city</button><label className="mt-3 block">Local connection token<input type="password" autoComplete="off" value={tokenDraft} onChange={e => setTokenDraft(e.target.value)} className="mt-1 block w-full rounded border border-cyan-700 bg-[#06141d] p-2" /></label><button className="mt-2 rounded bg-cyan-700 px-3 py-1" onClick={() => { localStorage.setItem('barq_auth_token', tokenDraft.trim()); wsRef.current?.close(); setWeatherRefresh(v => v + 1); setSettingsOpen(false); }}>Connect</button></div>}
 
       {/* left: recent sherry line (only when NOT expanded) */}
       <AnimatePresence>
