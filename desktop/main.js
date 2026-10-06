@@ -229,6 +229,8 @@ function createTray() {
   tray.setToolTip('Barq Assistant');
   tray.setContextMenu(
     Menu.buildFromTemplate([
+      { label: 'Wake Barq', click: () => { manualWake(); } },
+      { type: 'separator' },
       { label: 'Show Barq', click: () => { if (win) { win.show(); win.focus(); } } },
       { label: 'Hide', click: () => { if (win) win.hide(); } },
       { type: 'separator' },
@@ -244,7 +246,8 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
-  if (process.platform === 'win32') {
+  ipcMain.handle('barq-token', () => readAuthToken());
+  if (process.platform === 'win32' && app.isPackaged) {
     app.setLoginItemSettings({
       openAtLogin: true,
       path: process.execPath,
