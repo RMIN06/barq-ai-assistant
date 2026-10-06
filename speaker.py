@@ -69,10 +69,10 @@ async def speak(text: str):
             await asyncio.sleep(0.1)
 
     except Exception as e:
-        print(f"[ElevenLabs Voice Error]: {e}")
+        print(f"[Deepgram Voice Error]: {e}")
         print(f"[Barq (Text Fallback)]: {text}")
 
 
 if __name__ == "__main__":
-    print("Testing ElevenLabs Voice...")
+    print("Testing Deepgram Voice...")
     asyncio.run(speak("Systems are fully operational."))
