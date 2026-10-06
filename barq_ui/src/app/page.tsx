@@ -35,13 +35,20 @@ export default function Home() {
   const cameraRequestRef = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
     let retry: ReturnType<typeof setTimeout>;
+    const desktop = window as Window & { barqDesktop?: { token: () => Promise<string | null> } };
+    void desktop.barqDesktop?.token().then(token => { if (token) localStorage.setItem('barq_auth_token', token); });
+    const savedCity = localStorage.getItem('barq_weather_city') || '';
+    const savedCityTimer = setTimeout(() => { setWeatherCity(savedCity); setCityDraft(savedCity); }, 0);
 
     const open = () => {
-      ws = new WebSocket('ws://127.0.0.1:8000/ws');
+      const token = localStorage.getItem('barq_auth_token') || '';
+      ws = new WebSocket(`ws://127.0.0.1:8080/ws?token=${encodeURIComponent(token)}`);
+      wsRef.current = ws;
       ws.onopen = () => setConnected(true);
       ws.onclose = () => {
         setConnected(false);
