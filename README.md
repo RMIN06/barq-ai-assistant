@@ -56,7 +56,7 @@ Most AI assistants are boxed into a chat window. Barq isn't. It's a control laye
 |-------|------------|---------|---------|
 | **Backend Language** | Python | 3.12 | Core logic, system integration |
 | **LLM Inference** | Groq API | — | Llama-3.3-70B, Whisper, Vision |
-| **Voice Synthesis** | ElevenLabs | — | Multilingual v2, streaming TTS |
+| **Voice Synthesis** | Deepgram | — | Consistent configured voice |
 | **Wake Word** | Picovoice Porcupine | 3.x | Hardware-accelerated keyword spotting |
 | **Wake Fallback** | Groq Whisper | — | Cloud-based keyword detection |
 | **Audio Capture** | sounddevice + SpeechRecognition | — | Microphone input, VAD |
@@ -136,7 +136,7 @@ Most AI assistants are boxed into a chat window. Barq isn't. It's a control laye
 - Python 3.12+
 - Node.js 20+
 - Groq API key (https://console.groq.com)
-- ElevenLabs API key (https://elevenlabs.io)
+- Deepgram API key (https://deepgram.com)
 - Optional: Picovoice access key for faster wake word (https://console.picovoice.ai)
 
 ### 1. Clone the Repository
@@ -161,8 +161,7 @@ pip install -r requirements-test.txt
 copy .env.example .env
 # Edit .env with your API keys:
 # GROQ_API_KEY=your_key
-# ELEVENLABS_API_KEY=your_key
-# ELEVEN_VOICE_ID=your_voice_id
+# DEEPGRAM_API_KEY=your_key
 # PORCUPINE_ACCESS_KEY=your_key (optional)
 ```
 
@@ -216,12 +215,7 @@ cd "D:\Barq Assistant\barq-ai-assistant"
 ## Wake Words
 
 Say any of these to activate Barq:
-- `Barq`, `Bark`, `Park`, `Mark`, `Spark`, `Bart`, `Borg`, `BRQ`, `Work`
-- `Jarvis`, `Hey Barq`, `Hey Jarvis`
-- `Barq wake`, `Wake up`, `Wakeup`
-- `Wake up Barq`, `Wake up Jarvis`
-- `Hey Barq wake`, `Hey Jarvis wake`
-- `Hi Barq`, `Hi Jarvis`
+- `Barq`, `Jarvis`, `Hey Barq`, `Hey Jarvis`
 
 ## Sleep Words
 
