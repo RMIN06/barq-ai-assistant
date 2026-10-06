@@ -1,0 +1,8 @@
+# Optional local wake, vector memory, and legacy interpreter backends.
+chromadb>=1.0.0
+sentence-transformers>=3.0.0
+open-interpreter>=0.4.0
+pvporcupine>=3.0.0
+torch>=2.5.0
+silero-vad>=0.0.1
+whispercpp>=1.0.0
