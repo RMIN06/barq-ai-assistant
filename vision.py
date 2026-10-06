@@ -30,6 +30,7 @@ def describe_screen(png_bytes: bytes, question: str = None) -> str:
                 }
             ],
             temperature=0.4,
+            max_completion_tokens=256,
         )
         return completion.choices[0].message.content.strip()
     except Exception as e:
