@@ -4,15 +4,17 @@ import os
 import re
 import subprocess
 import threading
+import time
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi import Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from config import GROQ_API_KEY, SLEEP_WORDS
 from listener import listen_for_command
 from speaker import speak
-from brain import think
+from brain import think, record_result
 from wakeword_v2 import wait_for_wake_v2
 from screen_context import (
     get_light_context,
@@ -21,20 +23,22 @@ from screen_context import (
     open_browser_tab,
     open_app,
     screenshot_png_bytes,
+    create_folder,
+    delete_folder,
+    preview_delete,
+    list_folder,
+    create_file,
+    read_file,
+    delete_file,
 )
 from vision import describe_screen
-from auth import authenticate_websocket, get_auth_token
+from auth import authenticate_websocket, get_auth_token, verify_token, generate_token
 from health import router as health_router, record_wake_detection, record_command, record_error
-
-# --- Open Interpreter (for complex system/code tasks) ---
-from interpreter import interpreter
-
-os.environ["GROQ_API_KEY"] = GROQ_API_KEY
-interpreter.llm.api_key = GROQ_API_KEY
-interpreter.llm.model = "openai/llama-3.3-70b-versatile"
-interpreter.llm.api_base = "https://api.groq.com/openai/v1"
-interpreter.auto_run = True
-interpreter.system_message += "\nYou are Barq, Ibrahim's personal AI assistant."
+import psutil
+from action_safety import authorized_file_action
+from voice_state import is_sleep_command, is_non_request
+from weather import get_weather
+from spotify_media import requested_spotify_query, play_spotify_query
 
 SERVICE_MODE = os.environ.get("BARQ_SERVICE_MODE", "0") == "1"
 
