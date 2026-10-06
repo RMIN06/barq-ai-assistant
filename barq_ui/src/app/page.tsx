@@ -9,19 +9,31 @@ async function mode(name: 'wake' | 'sleep') {
   await fetch(`http://127.0.0.1:8080/${name}`, { method: 'POST', headers: { 'X-Barq-Token': token } });
 }
 
-const STATE_LABEL: Record<OrbState, string> = {
-  sleeping: 'Standby',
-  listening: 'Listening',
-  thinking: 'Thinking',
-  speaking: 'Speaking',
-  working: 'Working',
-};
+const wakeBarq = () => void mode('wake');
+const sleepBarq = () => void mode('sleep');
 
 export default function Home() {
-  const [aiState, setAiState] = useState<OrbState>('sleeping');
-  const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [connected, setConnected] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraPending, setCameraPending] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [aiState, setAiState] = useState('standby');
+  const [clock, setClock] = useState('');
+  const [stats, setStats] = useState<{ cpu: number; memory: number; disk: number; uptime: number } | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tokenDraft, setTokenDraft] = useState('');
+  const [weatherCity, setWeatherCity] = useState('');
+  const [cityDraft, setCityDraft] = useState('');
+  const [weather, setWeather] = useState<{ city: string; country: string; temperature: number; humidity: number; feels_like: number; wind: number } | null>(null);
+  const [weatherError, setWeatherError] = useState('Set a city in Settings.');
+  const [weatherRefresh, setWeatherRefresh] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraRef = useRef<MediaStream | null>(null);
+  const cameraRequestRef = useRef(0);
+  const wsRef = useRef<WebSocket | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
