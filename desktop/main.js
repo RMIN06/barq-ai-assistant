@@ -1,14 +1,16 @@
-const { app, BrowserWindow, Menu, Tray } = require('electron');
+const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const WebSocket = require('ws');
 const fs = require('fs');
+const http = require('http');
 
 const ROOT = path.join(__dirname, '..');
 const VENV_PY = path.join(ROOT, 'venv', 'Scripts', 'python.exe');
 const BARQ_UI = path.join(ROOT, 'barq_ui');
 const UI_URL = 'http://127.0.0.1:3000';
-const BACKEND_URL = 'ws://127.0.0.1:8000/ws';
+const BACKEND_URL = 'ws://127.0.0.1:8080/ws';
+const BACKEND_HTTP = 'http://127.0.0.1:8080';
 const AUTH_FILE = path.join(ROOT, 'barq_data', '.barq_auth');
 
 let win = null;
@@ -19,12 +21,26 @@ let wsRetry = null;
 let tray = null;
 let isQuitting = false;
 let authToken = null;
+let pendingWake = false;
 
 const START_HIDDEN = process.argv.includes('--hidden');
 const SERVICE_MODE = process.env.BARQ_SERVICE_MODE === '1';
 
 function log(...args) {
   console.log('[Barq]', ...args);
+}
+
+function manualWake() {
+  log('Manual wake triggered');
+  const token = readAuthToken();
+  const req = http.request(`${BACKEND_HTTP}/wake`, { method: 'POST', headers: { 'X-Barq-Token': token || '' } }, (res) => {
+    res.resume();
+    log('Manual wake request sent');
+  });
+  req.on('error', (e) => {
+    log('Manual wake error:', e.message);
+  });
+  req.end();
 }
 
 function readAuthToken() {
