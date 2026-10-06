@@ -56,26 +56,37 @@ def check_deepgram_api() -> Dict[str, Any]:
         return {"status": "unhealthy", "message": str(e)}
 
 
+_microphone_cache = {"result": None, "timestamp": 0}
+
 def check_microphone() -> Dict[str, Any]:
-    """Check microphone availability."""
+    """Check microphone availability using sounddevice blocking mode (like wake detection)."""
+    global _microphone_cache
+    import time
+    now = time.time()
+    if _microphone_cache["result"] and (now - _microphone_cache["timestamp"]) < 300:
+        return _microphone_cache["result"]
+
     try:
-        import speech_recognition as sr
-        mic = sr.Microphone()
-        if mic is None:
-            return {"status": "unavailable", "message": "No microphone device"}
-        with mic as source:
-            pass
-        return {"status": "healthy", "message": "Microphone accessible"}
+        import sounddevice as sd
+        import numpy as np
+        # Test with a short blocking recording (same as wake detection)
+        recording = sd.rec(16000, samplerate=16000, channels=1, dtype='float32')
+        sd.wait()
+        rms = np.sqrt(np.mean(recording**2))
+        result = {"status": "healthy", "message": f"Microphone accessible via sounddevice (RMS: {rms:.6f})"}
     except OSError as e:
-        if "No Default Input Device" in str(e) or "No such device" in str(e):
-            return {"status": "unavailable", "message": "No microphone (headless mode)"}
-        return {"status": "unhealthy", "message": str(e)}
-    except AttributeError as e:
-        if "'NoneType'" in str(e):
-            return {"status": "unavailable", "message": "No microphone (headless mode)"}
-        return {"status": "unhealthy", "message": str(e)}
+        if "No Default Input Device" in str(e) or "Error querying device" in str(e) or "Invalid device" in str(e):
+            result = {"status": "unavailable", "message": "No microphone available (headless mode)"}
+        else:
+            result = {"status": "unhealthy", "message": str(e)}
     except Exception as e:
-        return {"status": "unhealthy", "message": str(e)}
+        result = {"status": "unhealthy", "message": str(e)}
+
+    _microphone_cache = {"result": result, "timestamp": time.time()}
+    return result
+
+
+_speaker_cache = {"result": None, "timestamp": 0}
 
 
 def check_speaker() -> Dict[str, Any]:
