@@ -1,19 +1,12 @@
 'use client';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, Activity } from 'lucide-react';
-import JarvisOrb, { OrbState } from '@/components/JarvisOrb';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Camera, CameraOff, Clock3, Cpu, Download, Keyboard, Mic, Power, Send, Settings2, Trash2 } from 'lucide-react';
 
-type AppRegionStyle = CSSProperties & { WebkitAppRegion?: string };
+type Msg = { id: string; sender: 'you' | 'barq'; text: string; sitrep?: boolean; timestamp: number };
 
-type Msg = { id: string; sender: 'you' | 'barq'; text: string; sitrep?: boolean };
-
-interface WireMsg {
-  type?: string;
-  aiState?: OrbState;
-  text?: string;
-  sitrep?: boolean;
+async function mode(name: 'wake' | 'sleep') {
+  const token = localStorage.getItem('barq_auth_token') || '';
+  await fetch(`http://127.0.0.1:8080/${name}`, { method: 'POST', headers: { 'X-Barq-Token': token } });
 }
 
 const STATE_LABEL: Record<OrbState, string> = {
