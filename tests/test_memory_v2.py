@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 
 @pytest.fixture
 def mock_chromadb():
-    with patch("memory_v2.chromadb") as mock:
+    with patch("memory_v2.VECTOR_AVAILABLE", True), patch("memory_v2.Settings", create=True), patch("memory_v2.chromadb") as mock:
         mock_client = MagicMock()
         mock_collection = MagicMock()
         mock.PersistentClient.return_value = mock_client
