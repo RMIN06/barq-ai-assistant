@@ -180,12 +180,21 @@ async def service_engine_loop():
         log.debug("Active session - listening for command...")
         command = await asyncio.to_thread(listen_for_command)
         if not command:
+            if time.monotonic() - last_command_at > 45:
+                is_awake = False
+                kill_ui()
+                ui_spawned = False
             continue
+        if is_non_request(command):
+            continue
+        if command.casefold().strip() == last_command_text and time.monotonic() - last_command_at < 15:
+            continue
+        last_command_text = command.casefold().strip()
+        last_command_at = time.monotonic()
 
         log.info(f"Command: {command}")
 
-        from config import SLEEP_WORDS
-        if any(w in command for w in SLEEP_WORDS):
+        if is_sleep_command(command):
             log.info("Sleep command received")
             is_awake = False
             try:
@@ -195,6 +204,14 @@ async def service_engine_loop():
             await asyncio.sleep(1)
             kill_ui()
             ui_spawned = False
+            continue
+
+        spotify_query = requested_spotify_query(command)
+        if spotify_query:
+            outcome = await asyncio.to_thread(play_spotify_query, spotify_query)
+            stop = outcome["message"]
+            await asyncio.to_thread(record_result, command, stop)
+            await speak(stop)
             continue
 
         try:
