@@ -37,6 +37,7 @@ _silero_utils = None
 _porcupine = None
 _pvporcupine = None
 _sd = None
+_local_whisper = None
 
 
 def _init_silero_vad():
@@ -107,7 +108,53 @@ def _vad_probability(audio_frame: np.ndarray) -> float:
 
 def _substrings_match(check: str, substrings) -> bool:
     check = check.lower()
-    return any(sub in check for sub in substrings)
+    return any(re.search(r"(?<!\w)" + re.escape(word.lower()) + r"(?!\w)", check) for word in substrings)
+
+
+def _init_local_whisper():
+    """Initialize local whisper.cpp for offline transcription."""
+    global _local_whisper
+    if _local_whisper is not None:
+        return True
+    if not LOCAL_WHISPER_MODEL.exists():
+        log.warning(f"Local whisper model not found: {LOCAL_WHISPER_MODEL}")
+        return False
+    try:
+        from whispercpp import Whisper
+        _local_whisper = Whisper.from_pretrained(str(LOCAL_WHISPER_MODEL))
+        log.info(f"Local whisper.cpp loaded: {LOCAL_WHISPER_MODEL.name}")
+        return True
+    except Exception as e:
+        log.warning(f"Local whisper.cpp init failed: {e}")
+        return False
+
+
+def _transcribe_local_whisper(wav_bytes: bytes) -> str:
+    """Transcribe audio using local whisper.cpp (no API calls)."""
+    if not _init_local_whisper():
+        return ""
+    try:
+        # Save wav bytes to temp file for whispercpp
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+            tmp.write(wav_bytes)
+            tmp_path = tmp.name
+
+        # Transcribe
+        result = _local_whisper.transcribe(tmp_path)
+        text = " ".join([segment.text for segment in result]).lower().strip()
+
+        # Cleanup
+        try:
+            Path(tmp_path).unlink()
+        except:
+            pass
+
+        log.info(f"Local Whisper -> {text!r}")
+        return text
+    except Exception as e:
+        log.error(f"Local whisper transcription error: {e}")
+        return ""
 
 
 class HybridWakeDetector:
