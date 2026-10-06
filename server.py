@@ -130,10 +130,6 @@ def run_barq_engine():
                         "type": "state", "aiState": "listening",
                         "transcript": "I am online.",
                     })
-                    try:
-                        await speak("I am awake and listening.")
-                    except Exception as e:
-                        log.error("Voice error: %s", e)
                 continue
 
             # ---------------- ACTIVE SESSION ----------------
@@ -142,6 +138,12 @@ def run_barq_engine():
                 "transcript": "Listening...",
             })
             command = await asyncio.to_thread(listen_for_command)
+            if manual_sleep_event.is_set():
+                manual_sleep_event.clear()
+                manual_wake_event.clear()
+                is_awake = False
+                await manager.broadcast({"type": "sleep"})
+                continue
             if not command:
                 continue
             log.info("Command: %r", command)
