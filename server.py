@@ -207,17 +207,13 @@ def run_barq_engine():
             result = await asyncio.to_thread(think, command, situation)
             reply = result["speech"]
 
-            await manager.broadcast({"type": "ai", "text": reply})
-            try:
-                await speak(reply)
-            except Exception:
-                pass
-
             intent = result.get("intent", "conversation")
             action = result.get("action", "")
             subject = result.get("subject", "")
             record_command(intent)
             stop = None
+            if intent == "conversation":
+                stop = reply
 
             if intent == "browser":
                 try:
