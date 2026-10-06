@@ -1,3 +1,4 @@
-window.addEventListener('DOMContentLoaded', () => {
-  // Reserved for exposing safe IPC if the renderer needs it.
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('barqDesktop', {
+  token: () => ipcRenderer.invoke('barq-token'),
 });
