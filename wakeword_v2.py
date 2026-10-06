@@ -236,13 +236,30 @@ class HybridWakeDetector:
 
         log.info("Confirming with local Whisper...")
         try:
-            wav_bytes = _record_wake_audio(duration=2.0)
+            # Record audio directly
+            duration = 2.0
+            samplerate = 16000
+            recording = sd.rec(int(duration * samplerate), samplerate=samplerate, channels=1, dtype='int16')
+            sd.wait()
+
+            # Convert to wav bytes
+            with io.BytesIO() as buf:
+                with wave.open(buf, 'wb') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(samplerate)
+                    wf.writeframes(recording.tobytes())
+                wav_bytes = buf.getvalue()
+
             if not wav_bytes:
                 return False
-            text = transcribe_audio(wav_bytes)
+
+            # Transcribe locally
+            text = _transcribe_local_whisper(wav_bytes)
             if not text:
                 return False
-            log.info(f"Whisper heard: {text!r}")
+
+            log.info(f"Local Whisper heard: {text!r}")
             matched = _substrings_match(text, WAKE_WORDS)
             if matched:
                 log.info(f"WAKE CONFIRMED: {text!r}")
