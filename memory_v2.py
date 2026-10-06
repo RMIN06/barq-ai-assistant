@@ -1,7 +1,5 @@
-"""
-Vector Memory (RAG) for Barq - Semantic search over conversations and knowledge.
-"""
 import json
+import os
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -56,7 +54,7 @@ class VectorMemory:
                 name=COLLECTION_NAME,
                 metadata={"hnsw:space": "cosine"}
             )
-            self._embedder = SentenceTransformer(EMBEDDING_MODEL)
+            self._embedder = SentenceTransformer(EMBEDDING_MODEL, local_files_only=True)
             self._initialized = True
             log.info(f"Vector memory initialized: {self._collection.count()} documents")
         except Exception as e:
