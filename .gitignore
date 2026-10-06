@@ -8,3 +8,6 @@ barq_data
 __pycache__/
 *.pyc
 *.onnx
+.python312/
+.python312-embed.zip
+models/*.bin
