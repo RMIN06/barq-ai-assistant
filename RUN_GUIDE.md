@@ -1,20 +1,17 @@
 # Barq — One-Time Run Guide (sleeps 24/7, wakes on command)
 
-Barq already has your Groq + ElevenLabs keys baked in as defaults (`config.py`),
-so **no `.env` and no Porcupine/Picovoice account are required**. Wake words are
-detected with Groq Whisper out of the box. (A free Picovoice key is optional and
-only makes wake detection slightly faster.)
+Set `GROQ_API_KEY` and `DEEPGRAM_API_KEY` in `.env`. Wake words use microphone
+voice activity detection followed by Groq Whisper. Picovoice is optional.
 
 ## What you get
 - Backend + UI + overlay all start together and keep running in the background.
-- Overlay stays **hidden** until you say a wake word, then a small Jarvis-style
-  window pops up, exactly like Siri.
+- Overlay stays **hidden** until you say `Barq` or `Jarvis`, then the dashboard opens.
 - Say a sleep phrase to dismiss it (see wake/sleep words below).
 
 ---
 
 ## 1. One-time setup (already done for you)
-- Python venv with all packages: exists at `venv/`
+- Python 3.12 runtime is in `.python312/`; the existing `venv/` uses it.
 - Frontend + desktop deps: installed on **D drive** (no C-drive space used)
   - `barq_ui/node_modules`
   - `desktop/node_modules`
@@ -45,12 +42,12 @@ This adds a **Startup shortcut** that launches Barq hidden at every Windows logi
 From then on it just lives in your system tray, silent, until you say the wake word.
 
 > To change the keys later, copy `.env.example` to `.env` (same folder as
-> `config.py`) and fill in `GROQ_API_KEY` / `ELEVEN_API_KEY`.
+> `config.py`) and fill in `GROQ_API_KEY` / `DEEPGRAM_API_KEY`.
 
 ---
 
 ## Wake words (any of these activate it)
-`barq`, `bark`, `jarvis`, `hey barq`
+`barq`, `jarvis`, `hey barq`, `hey jarvis`
 
 ## Sleep words (dismiss it back to the background)
 `go to sleep`, `sleep mode`, `standby`, `shut down`, `goodnight`, `turn off`
