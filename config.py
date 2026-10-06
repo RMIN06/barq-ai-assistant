@@ -26,10 +26,7 @@ PORCUPINE_ACCESS_KEY = os.environ.get("PORCUPINE_ACCESS_KEY", "")
 PORCUPINE_MODEL_PATH = DATA_DIR / "barq_wakeword.ppn"
 PORCUPINE_KEYWORD = os.environ.get("PORCUPINE_KEYWORD", "jarvis")
 WAKE_WORDS = [
-    "barq", "bark", "park", "mark", "spark", "bart", "borg", "brq", "work",
-    "jarvis", "hey barq", "hey jarvis", "barq wake", "wake up", "wakeup",
-    "wake up barq", "wake up jarvis", "wakeup barq", "wakeup jarvis",
-    "hey barq wake", "hey jarvis wake", "hi barq", "hi jarvis",
+    "barq", "jarvis", "hey barq", "hey jarvis",
 ]
 SLEEP_WORDS = ["go to sleep", "sleep mode", "standby", "shut down", "goodnight", "turn off"]
 
