@@ -283,6 +283,7 @@ async def service_engine_loop():
 
 
 def run_service():
+    print(">>> run_service() called - starting service")
     try:
         asyncio.run(service_engine_loop())
     except KeyboardInterrupt:
