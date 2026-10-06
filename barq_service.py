@@ -161,19 +161,20 @@ async def service_engine_loop():
                 woken = False
 
             if woken:
-                log.info("Wake word detected!")
+                log.info("*** WAKE WORD DETECTED! ***")
                 record_wake_detection()
                 is_awake = True
+                last_command_at = time.monotonic()
 
                 if not ui_spawned:
+                    log.info("Spawning UI...")
                     spawn_ui()
                     ui_spawned = True
                     await asyncio.sleep(2)
 
-                try:
-                    await speak("I am online and listening.")
-                except Exception as e:
-                    log.error(f"Wake speech error: {e}")
+            else:
+                # Wake detection failed - wait before retrying to prevent tight loop
+                await asyncio.sleep(2)
             continue
 
         log.debug("Active session - listening for command...")
