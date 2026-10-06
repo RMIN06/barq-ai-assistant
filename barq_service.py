@@ -225,16 +225,13 @@ async def service_engine_loop():
         reply = result["speech"]
         log.info(f"Barq: {reply}")
 
-        try:
-            await speak(reply)
-        except Exception as e:
-            log.error(f"Speech error: {e}")
-
         intent = result.get("intent", "conversation")
         action = result.get("action", "")
         subject = result.get("subject", "")
         record_command(intent)
         stop = None
+        if intent == "conversation":
+            stop = reply
 
         if intent == "browser":
             try:
@@ -269,21 +266,11 @@ async def service_engine_loop():
                 stop = f"App open error: {e}"
 
         elif intent == "system":
-            try:
-                os.environ["GROQ_API_KEY"] = GROQ_API_KEY
-                from interpreter import interpreter
-                interpreter.llm.api_key = GROQ_API_KEY
-                interpreter.llm.model = "openai/llama-3.3-70b-versatile"
-                interpreter.llm.api_base = "https://api.groq.com/openai/v1"
-                interpreter.auto_run = True
-                interpreter.chat(command)
-                stop = "Done. Task executed."
-            except Exception as e:
-                log.error(f"Interpreter error: {e}")
-                record_error("interpreter")
-                stop = "Execution failed."
+            stop = "Automatic code execution is disabled. I can help plan the task."
 
         if stop:
+            if intent != "conversation":
+                await asyncio.to_thread(record_result, command, stop)
             log.info(f"Sitrep: {stop}")
             try:
                 await speak(stop)
