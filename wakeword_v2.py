@@ -397,15 +397,94 @@ class HybridWakeDetector:
         return True
 
     def _listen_whisper_only(self, external_stop) -> bool:
-        from listener import short_phrase_for_wake
-        log.info("Whisper-only fallback armed")
-        while True:
-            if external_stop and external_stop.is_set():
-                return False
-            phrase = short_phrase_for_wake()
-            if phrase and _substrings_match(phrase, WAKE_WORDS):
-                log.info(f"Whisper WAKE: {phrase!r}")
-                return True
+        """Simple Energy-based wake detection using blocking recording."""
+        import sounddevice as sd
+        import numpy as np
+
+        log.info("Energy-only fallback armed (local, no API)")
+        sample_rate = 16000
+        frame_duration = 1.0  # 1 second frames
+        frame_samples = int(sample_rate * frame_duration)
+        energy_threshold = 0.015
+        min_speech_frames = 2  # ~2 seconds
+        max_silence_frames = 10
+
+        speech_frames = 0
+        silence_frames = 0
+
+        try:
+            while not self._detected.is_set():
+                if external_stop and external_stop.is_set():
+                    return False
+
+                recording = sd.rec(frame_samples, samplerate=sample_rate, channels=1, dtype='float32')
+                sd.wait()
+
+                frame = recording[:, 0] if len(recording.shape) > 1 else recording
+                rms = np.sqrt(np.mean(frame.astype(np.float32)**2))
+
+                if rms > energy_threshold:
+                    speech_frames += 1
+                    silence_frames = 0
+                    if speech_frames >= min_speech_frames:
+                        log.info(f"Energy WAKE detected (rms={rms:.4f})")
+                        self._detected.set()
+                        return True
+                else:
+                    silence_frames += 1
+                    if silence_frames > max_silence_frames:
+                        speech_frames = 0
+                        silence_frames = 0
+
+        except Exception as e:
+            log.error(f"Energy-only recording error: {e}")
+            return False
+        return True
+
+    def _listen_local_energy(self, external_stop) -> bool:
+        """Last-resort: simple RMS energy detection using blocking recording."""
+        import sounddevice as sd
+        import numpy as np
+
+        log.info("Local energy fallback armed (no API)")
+        sample_rate = 16000
+        frame_duration = 1.0
+        frame_samples = int(sample_rate * frame_duration)
+        energy_threshold = 0.02
+        min_speech_frames = 2
+        max_silence_frames = 10
+
+        speech_frames = 0
+        silence_frames = 0
+
+        try:
+            while not self._detected.is_set():
+                if external_stop and external_stop.is_set():
+                    return False
+
+                recording = sd.rec(frame_samples, samplerate=sample_rate, channels=1, dtype='float32')
+                sd.wait()
+
+                frame = recording[:, 0] if len(recording.shape) > 1 else recording
+                rms = np.sqrt(np.mean(frame.astype(np.float32)**2))
+
+                if rms > energy_threshold:
+                    speech_frames += 1
+                    silence_frames = 0
+                    if speech_frames >= min_speech_frames:
+                        log.info(f"Local Energy WAKE detected (rms={rms:.4f})")
+                        self._detected.set()
+                        return True
+                else:
+                    silence_frames += 1
+                    if silence_frames > max_silence_frames:
+                        speech_frames = 0
+                        silence_frames = 0
+
+        except Exception as e:
+            log.error(f"Local energy recording error: {e}")
+            return False
+        return True
 
 
 def wait_for_wake_v2(stop_event=None) -> bool:
