@@ -14,11 +14,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
-from config import GROQ_API_KEY
 from wakeword_v2 import wait_for_wake_v2
 from listener import listen_for_command
 from speaker import speak
-from brain import think
+from brain import think, record_result
 from screen_context import (
     get_light_context,
     format_situation,
@@ -30,6 +29,8 @@ from screen_context import (
 from vision import describe_screen
 from barqlog import get_logger
 from health import record_wake_detection, record_command, record_error
+from voice_state import is_sleep_command, is_non_request
+from spotify_media import requested_spotify_query, play_spotify_query
 
 import subprocess
 import json
@@ -81,7 +82,7 @@ def spawn_ui():
 
         try:
             UI_PROCESS = subprocess.Popen(
-                [str(venv_py), "-m", "uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8000"],
+                [str(venv_py), "-m", "uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8080"],
                 cwd=BASE_DIR,
                 env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
