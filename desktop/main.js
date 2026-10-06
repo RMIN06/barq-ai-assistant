@@ -158,13 +158,15 @@ function connectWS() {
     try {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'wake') {
-        log('Wake word heard - showing overlay.');
+        log('Wake word heard - showing window.');
+        pendingWake = true;
         if (win && !win.isDestroyed()) {
           win.show();
           win.focus();
         }
       } else if (msg.type === 'sleep') {
-        log('Sleep - hiding overlay.');
+        log('Sleep - hiding window.');
+        pendingWake = false;
         if (win && !win.isDestroyed()) win.hide();
       }
     } catch {
