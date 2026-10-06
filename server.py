@@ -108,18 +108,21 @@ def run_barq_engine():
         while True:
             # ---------------- STANDBY / WAKE WORD ----------------
             if not is_awake:
+                manual_sleep_event.clear()
                 await manager.broadcast({
                     "type": "state", "aiState": "sleeping",
                     "transcript": "Standby - listening for the wake word.",
                 })
                 try:
-                    woken = await asyncio.to_thread(wait_for_wake)
+                    woken = await asyncio.to_thread(wait_for_wake_v2, manual_wake_event)
                 except Exception as e:
                     log.error("Wake error: %s", e, exc_info=True)
                     record_error("wake_detection")
                     woken = False
-                if woken:
+                if woken or manual_wake_event.is_set():
+                    manual_wake_event.clear()
                     is_awake = True
+                    last_command_at = time.monotonic()
                     log.info("Wake word detected.")
                     record_wake_detection()
                     await manager.broadcast({"type": "wake"})
