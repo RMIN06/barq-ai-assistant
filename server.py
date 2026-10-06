@@ -158,8 +158,9 @@ def run_barq_engine():
             log.info("Command: %r", command)
             await manager.broadcast({"type": "user", "text": command})
 
-            if any(w in command for w in SLEEP_WORDS):
+            if is_sleep_command(command):
                 is_awake = False
+                manual_wake_event.clear()
                 await manager.broadcast({"type": "sleep"})
                 await manager.broadcast({
                     "type": "state", "aiState": "sleeping",
