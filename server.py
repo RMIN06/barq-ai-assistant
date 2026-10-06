@@ -172,6 +172,15 @@ def run_barq_engine():
                     pass
                 continue
 
+            spotify_query = requested_spotify_query(command)
+            if spotify_query:
+                outcome = await asyncio.to_thread(play_spotify_query, spotify_query)
+                stop = outcome["message"]
+                await asyncio.to_thread(record_result, command, stop)
+                await manager.broadcast({"type": "ai", "text": stop})
+                await speak(stop)
+                continue
+
             fast = fast_route_execution(command)
             if fast:
                 await manager.broadcast({"type": "ai", "text": fast})
