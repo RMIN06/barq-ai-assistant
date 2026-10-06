@@ -83,31 +83,95 @@ export default function Home() {
 
     return () => {
       ws?.close();
+      clearTimeout(savedCityTimer);
       clearTimeout(retry);
+      clearInterval(statusInterval);
+      clearInterval(statsInterval);
       clearInterval(t);
     };
   }, []);
 
-  const speaking = aiState === 'speaking';
-  const lastMsg = messages[messages.length - 1];
+  useEffect(() => {
+    if (!weatherCity) return;
+    const loadWeather = async () => {
+      const auth = localStorage.getItem('barq_auth_token') || '';
+      if (!auth) return;
+      try {
+        const response = await fetch(`http://127.0.0.1:8080/weather?city=${encodeURIComponent(weatherCity)}`, { headers: { 'X-Barq-Token': auth } });
+        if (!response.ok) throw new Error(`Weather request failed (${response.status})`);
+        setWeather(await response.json());
+        setWeatherError('');
+      } catch (error) { setWeather(null); setWeatherError(error instanceof Error ? error.message : 'Weather unavailable.'); }
+    };
+    void loadWeather();
+    const timer = setInterval(loadWeather, 600000);
+    return () => clearInterval(timer);
+  }, [weatherCity, weatherRefresh]);
+
+  useEffect(() => {
+    if (cameraOn && videoRef.current && cameraRef.current) videoRef.current.srcObject = cameraRef.current;
+  }, [cameraOn]);
+
+  useEffect(() => () => {
+    cameraRequestRef.current += 1;
+    cameraRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  const sendCommand = useCallback((text: string) => {
+    if (!text.trim()) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ type: 'command', text }));
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputValue.trim()) return;
+    sendCommand(inputValue);
+    setInputValue('');
+  };
+
+  const toggleCamera = async () => {
+    if (cameraPending) { cameraRequestRef.current += 1; setCameraPending(false); setCameraError('Camera request cancelled.'); return; }
+    if (cameraRef.current) { cameraRef.current.getTracks().forEach(t => t.stop()); cameraRef.current = null; setCameraOn(false); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { setCameraError('Camera access is unavailable in this window.'); return; }
+    const request = ++cameraRequestRef.current;
+    setCameraPending(true);
+    setCameraError('Requesting camera access…');
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const stream = await Promise.race([
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(stream => {
+          if (request !== cameraRequestRef.current) stream.getTracks().forEach(track => track.stop());
+          return stream;
+        }),
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('Camera request timed out. Check device access and permissions.')), 10000); }),
+      ]);
+      if (request !== cameraRequestRef.current) return;
+      cameraRef.current = stream;
+      setCameraOn(true);
+      setCameraError('');
+    } catch (error) {
+      if (request === cameraRequestRef.current) setCameraError(error instanceof Error ? error.message : 'Camera unavailable or permission denied.');
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (request === cameraRequestRef.current) setCameraPending(false);
+    }
+  };
+  const exportChat = () => { const blob = new Blob([messages.map(m => `${m.sender}: ${m.text}`).join('\n')], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'conversation.txt'; link.click(); URL.revokeObjectURL(url); };
+
+  // Command list - each command renders > as a separate span
+  const renderCommand = (cmd: string) => (
+    <div>
+      <span>{'>'}</span> {cmd}
+    </div>
+  );
+
+  const commandList = ['Try asking a question or giving one specific command.'];
 
   return (
-    <main className="relative flex h-screen w-full overflow-hidden bg-[#05070f] text-white font-sans select-none">
-      {/* frameless-window drag region */}
-      <div style={{ WebkitAppRegion: 'drag' } as AppRegionStyle} className="absolute inset-x-0 top-0 z-30 h-8" />
-      {/* animated aurora background */}
-      <div className="aurora aurora-a pointer-events-none h-[30vmax] w-[30vmax] bg-cyan-500/15" />
-      <div className="aurora aurora-b pointer-events-none h-[26vmax] w-[26vmax] bg-blue-600/15" />
-      <div className="aurora aurora-c pointer-events-none h-[20vmax] w-[20vmax] bg-fuchsia-600/10" />
-
-      {/* brand logo */}
-      <div style={{ WebkitAppRegion: 'no-drag' } as AppRegionStyle} className="absolute left-5 top-5 z-20 flex items-center gap-2.5">
-        <img
-          src="/barq.png"
-          alt="BARQ"
-          className="h-9 w-9 rounded-lg border border-white/15 object-cover shadow-lg"
-        />
-      </div>
+    <div className="dashboard-shell fixed inset-0 z-50 flex h-screen w-screen overflow-auto lg:overflow-hidden bg-[#050d15] text-white font-sans select-none" style={{ fontFamily: 'Arial, sans-serif' }}>
+      {/* Terminal-style background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#030510] to-[#050818]" />
+      <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(ellipse at center, rgba(0,255,255,0.07) 0%, transparent 70%)' }} />
 
       {/* center stage */}
       <div className="relative z-10 flex h-full flex-1 flex-col items-center justify-center">
