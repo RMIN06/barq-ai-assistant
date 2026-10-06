@@ -50,12 +50,25 @@ def test_open_app_calculator(mock_popen):
     mock_popen.assert_called_with("calc")
 
 
+@patch("screen_context.shutil.which", return_value=None)
+@patch("screen_context.subprocess.run")
 @patch("screen_context.subprocess.Popen")
-def test_open_app_unknown(mock_popen):
+def test_open_app_unknown(mock_popen, mock_run, mock_which):
     from screen_context import open_app
+    mock_run.return_value.stdout = "[]"
     result = open_app("unknown_app")
     assert result["ok"] is False
     mock_popen.assert_not_called()
+
+
+@patch("screen_context.subprocess.run")
+@patch("screen_context.subprocess.Popen")
+def test_open_store_app(mock_popen, mock_run):
+    from screen_context import open_app
+    mock_run.return_value.stdout = '[{"Name":"Spotify","AppID":"SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify"}]'
+    result = open_app("spotify")
+    assert result["ok"] is True
+    mock_popen.assert_called_once_with(["explorer.exe", "shell:AppsFolder\\SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify"])
 
 
 @patch("screen_context.user32")
