@@ -514,8 +514,16 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
 
 if __name__ == "__main__":
     import logging
-
-    import uvicorn
+    import asyncio
+    from hypercorn.asyncio import serve
+    from hypercorn.config import Config
 
     logging.getLogger("open_interpreter").setLevel(logging.ERROR)
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    config = Config()
+    config.bind = ["127.0.0.1:8080"]
+    config.log_level = "info"
+    config.accesslog = "-"
+    config.errorlog = "-"
+
+    asyncio.run(serve(app, config))
