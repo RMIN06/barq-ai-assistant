@@ -281,39 +281,27 @@ export default function Home() {
             className="px-3 py-1.5 text-xs font-mono bg-cyan-500/20 border border-cyan-500/30 rounded hover:bg-cyan-500/30 transition-colors ml-2"
             title="Wake (Ctrl+Shift+Space)"
           >
-            <div ref={logRef} className="flex-1 space-y-2.5 overflow-y-auto custom-scrollbar p-4">
-              {messages.length === 0 ? (
-                <p className="py-14 text-center font-mono text-xs text-gray-600 italic">
-                  Say the wake word to begin a conversation...
-                </p>
-              ) : (
-                messages.map((m) => (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
-                      m.sender === 'you'
-                        ? 'ml-auto border border-blue-500/20 bg-blue-600/10 text-blue-100'
-                        : m.sitrep
-                        ? 'mr-auto border border-emerald-500/20 bg-emerald-600/10 text-emerald-100'
-                        : 'mr-auto border border-white/10 bg-white/5 text-gray-200'
-                    }`}
-                  >
-                    <span className="mb-0.5 block font-mono text-[9px] uppercase tracking-widest opacity-60">
-                      {m.sender === 'you' ? 'You' : m.sitrep ? 'Barq · sitrep' : 'Barq'}
-                    </span>
-                    {m.text}
-                  </motion.div>
-                ))
-              )}
-            </div>
-            <div className="border-t border-white/10 px-4 py-2 text-center font-mono text-[9px] uppercase tracking-widest text-gray-500">
-              Expand to follow the live transcript
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </main>
+            MIC
+          </button>
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-6 border-t border-cyan-400/20 bg-[#020412]/90 backdrop-blur-sm flex items-center justify-between px-4 text-xs font-mono z-20">
+        <div className="flex items-center gap-4 text-gray-500">
+          <span className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+            <span>{connected ? 'CONNECTED' : 'DISCONNECTED'}</span>
+          </span>
+          <span className="text-gray-400">|</span>
+          <span>WS: {connected ? 'OPEN' : 'CLOSED'}</span>
+          <span className="text-gray-400">|</span>
+          <span>RAM: {stats ? `${stats.memory.toFixed(0)}%` : '—'}</span>
+          <span className="text-gray-400">|</span>
+          <span>CPU: {stats ? `${stats.cpu.toFixed(0)}%` : '—'}</span>
+        </div>
+        <div className="text-gray-400 font-mono" id="status-bar-text">{aiState.toUpperCase()} | {aiState === 'standby' ? 'Awaiting wake word' : 'Ready'}</div>
+      </div>
+    </div>
   );
 }
