@@ -262,8 +262,50 @@ def run_barq_engine():
                     record_error("interpreter")
                     stop = "I hit an issue while executing that."
 
+            elif intent == "filesystem":
+                await manager.broadcast({
+                    "type": "state", "aiState": "working",
+                    "transcript": "Working on filesystem...",
+                })
+                try:
+                    if not authorized_file_action(command, action, subject):
+                        res = {"ok": False, "message": "I need the exact file or folder name in your request before acting."}
+                    elif action == "create" and subject:
+                        # Check if it's a folder or file (simple heuristic: if ends with / or no extension)
+                        if subject.endswith('/') or '.' not in Path(subject).name:
+                            res = create_folder(subject)
+                        else:
+                            res = create_file(subject)
+                    elif action == "delete" and subject:
+                        # Safety: preview first, then delete
+                        preview = preview_delete(subject)
+                        if not preview.get("ok"):
+                            res = preview
+                        else:
+                            res = delete_folder(subject) if preview["item_count"] == 0 else {
+                                "ok": False, "message": f"{subject} contains files. Review its contents before deleting it."
+                            }
+                    elif action == "preview" and subject:
+                        res = preview_delete(subject)
+                    elif action == "list" and subject:
+                        res = list_folder(subject)
+                    elif action == "read" and subject:
+                        res = read_file(subject)
+                    elif action == "write" and subject:
+                        # For write, we need content - extract from command or use empty
+                        res = create_file(subject, "")
+                    else:
+                        res = {"ok": False, "message": f"Unknown filesystem action: {action}"}
+                    stop = res.get("message") or str(res)
+                except Exception as e:
+                    log.error("[Filesystem error] %s", e)
+                    record_error("filesystem")
+                    stop = "I hit an issue with the filesystem."
+
             # ===== SPOKEN SITREP =====
             if stop:
+                if intent != "conversation":
+                    await asyncio.to_thread(record_result, command, stop)
                 await manager.broadcast({"type": "ai", "text": stop,
                                          "sitrep": True})
                 try:
