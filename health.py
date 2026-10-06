@@ -9,7 +9,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, Response
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
-from config import GROQ_API_KEY, ELEVENLABS_API_KEY
+from config import GROQ_API_KEY, DEEPGRAM_API_KEY
 from barqlog import get_logger
 
 log = get_logger("health")
@@ -39,15 +39,19 @@ def check_groq_api() -> Dict[str, Any]:
         return {"status": "unhealthy", "message": str(e)}
 
 
-def check_elevenlabs_api() -> Dict[str, Any]:
-    """Check ElevenLabs API connectivity."""
-    if not ELEVENLABS_API_KEY:
-        return {"status": "unconfigured", "message": "ELEVENLABS_API_KEY not set"}
+def check_deepgram_api() -> Dict[str, Any]:
+    """Check Deepgram API connectivity."""
+    if not DEEPGRAM_API_KEY:
+        return {"status": "unconfigured", "message": "DEEPGRAM_API_KEY not set"}
     try:
-        from elevenlabs.client import ElevenLabs
-        client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-        voices = client.voices.get_all()
-        return {"status": "healthy", "voices": len(voices.voices)}
+        import requests
+        headers = {"Authorization": f"Token {DEEPGRAM_API_KEY}"}
+        resp = requests.get("https://api.deepgram.com/v1/projects", headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            return {"status": "healthy", "projects": len(data.get("projects", []))}
+        else:
+            return {"status": "unhealthy", "message": f"HTTP {resp.status_code}"}
     except Exception as e:
         return {"status": "unhealthy", "message": str(e)}
 
