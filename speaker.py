@@ -4,11 +4,11 @@ import os
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
-from elevenlabs.client import ElevenLabs
+import aiohttp
 
-from config import ELEVENLABS_API_KEY, ELEVEN_MODEL, ELEVEN_VOICE_ID
+from config import DEEPGRAM_API_KEY, DEEPGRAM_VOICE, DEEPGRAM_MODEL
 
-client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+DEEPGRAM_TTS_URL = "https://api.deepgram.com/v1/speak"
 
 _mixer_initialized = False
 
