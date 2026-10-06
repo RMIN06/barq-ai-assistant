@@ -4,8 +4,8 @@
 ![Next.js](https://img.shields.io/badge/Frontend-Next.js-black)
 ![Three.js](https://img.shields.io/badge/UI-Three.js-lightgrey)
 ![Groq](https://img.shields.io/badge/LLM-Groq-purple)
-![ElevenLabs](https://img.shields.io/badge/Voice-ElevenLabs-orange)
-![Tests](https://img.shields.io/badge/Tests-62%20passing-brightgreen)
+![Deepgram](https://img.shields.io/badge/Voice-Deepgram-orange)
+![Tests](https://img.shields.io/badge/Tests-65%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 A personal desktop AI assistant inspired by JARVIS — built to actually run your machine, not just chat with you. Barq listens, talks back, and executes: it has full access to your computer, can browse and scrape the web, and carries out real tasks on request, all wrapped in a 3D interactive interface.
@@ -21,11 +21,11 @@ Most AI assistants are boxed into a chat window. Barq isn't. It's a control laye
 ## Key Features
 
 ### 🎯 Core Capabilities
-- **Zero-Memory Background Mode** — Runs as Windows Service (<50MB RAM idle), spawns UI on-demand
-- **Perfect Wake Word Detection** — Hybrid pipeline: VAD → Porcupine (<50ms) → Whisper confirmation
-- **Voice Interaction** — Natural speech synthesis (ElevenLabs) + high-accuracy STT (Groq Whisper)
+- **Login Standby** — Desktop app starts hidden and listens for Barq or Jarvis
+- **Wake Word Detection** — Microphone voice activity detection followed by Groq Whisper; optional Porcupine
+- **Voice Interaction** — Deepgram synthesis and Groq Whisper transcription; playback requires a working Windows output device
 - **System Control** — File operations, process management, browser tab control, app launching
-- **Code Execution** — Open Interpreter integration for arbitrary Python/scripts
+- **Code Execution** — Automatic arbitrary code execution is disabled
 - **Screen Understanding** — Window/tab awareness + Groq Vision for screen analysis
 - **Multi-Monitor Support** — Full window management across all displays
 
@@ -43,10 +43,10 @@ Most AI assistants are boxed into a chat window. Barq isn't. It's a control laye
 - **Context Awareness** — Real-time screen context fed to LLM
 
 ### 🖥️ Immersive Interface
-- **3D Orb Visualization** — Three.js animated orb with state-driven animations
+- **Orb Visualization** — Dashboard orb with listening state
 - **Real-time Transcript** — Live conversation log with SITREP markers
 - **System Tray Integration** — Hide/show/quit from tray
-- **Auto-start at Login** — Windows Service + Task Scheduler
+- **Auto-start at Login** — User Startup shortcut launches Electron hidden
 
 ---
 
