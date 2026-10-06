@@ -29,6 +29,10 @@ def transcribe_audio(wav_bytes: bytes) -> str:
         log.info("Whisper -> %r", text)
         return text
     except Exception as e:
+        error_str = str(e)
+        if "rate_limit" in error_str.lower() or "429" in error_str:
+            log.warning("Whisper rate limited, re-raising for retry")
+            raise  # Re-raise rate limit errors for retry logic
         log.error("Whisper STT error: %s", e)
         return ""
 
@@ -53,6 +57,8 @@ def listen_for_command(timeout: float = 6.0, phrase_time_limit: float = 20.0) ->
             audio = recognizer.listen(
                 source, timeout=timeout, phrase_time_limit=phrase_time_limit
             )
+            if not has_audible_speech(audio):
+                return ""
             return transcribe_audio(audio.get_wav_data())
     except sr.WaitTimeoutError:
         return ""
