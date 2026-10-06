@@ -8,6 +8,10 @@ so it never accidentally affects Barq's own UI.
 import ctypes
 import io
 import subprocess
+import json
+import os
+import shutil
+from pathlib import Path
 
 import psutil
 import pyautogui
@@ -82,12 +86,14 @@ def get_light_context():
         "foreground_app": act["app"],
         "active_tab_or_window": act["title"],
         "open_browser_tabs": tabs,
+        "desktop_path": str(Path.home() / "Desktop"),
     }
 
 
 def format_situation(context) -> str:
     lines = [f"Foreground app: {context.get('foreground_app') or 'unknown'}"]
     lines.append(f"Window/tab title: {context.get('active_tab_or_window') or 'unknown'}")
+    lines.append(f"Desktop path: {context.get('desktop_path') or 'unknown'}")
     tabs = context.get("open_browser_tabs") or []
     if tabs:
         lines.append("Open tabs: " + ", ".join(tabs[:8]))
