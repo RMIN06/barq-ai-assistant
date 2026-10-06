@@ -4,6 +4,7 @@ import os
 from groq import Groq
 
 from config import GROQ_API_KEY, LLM_MODEL, MEMORY_FILE
+from memory_v2 import vector_memory, add_conversation, search_memory
 
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -39,6 +40,18 @@ def add_turn(mem, role, content):
         mem["history"] = mem["history"][-MAX_HISTORY * 2:]
 
 
+def record_result(command: str, result: str) -> None:
+    """Remember only the observed result of an attempted action."""
+    mem = load_memory()
+    add_turn(mem, "user", command)
+    add_turn(mem, "assistant", result)
+    save_memory(mem)
+    try:
+        vector_memory.add_conversation(command, result)
+    except Exception as e:
+        print(f"[Vector memory save error]: {e}")
+
+
 # --------------------------------------------------------------------------- #
 def think(prompt: str, situation: str = "", last_speech: str = "") -> dict:
     """
@@ -46,6 +59,26 @@ def think(prompt: str, situation: str = "", last_speech: str = "") -> dict:
     intent: conversation | screen | browser | app | system | web
     """
     mem = load_memory()
+
+    # Get relevant context from vector memory
+    vector_context = ""
+    try:
+        if vector_memory.is_available():
+            recent = vector_memory.get_recent_context(3)
+            relevant = vector_memory.search_conversations(prompt, 3)
+            if recent:
+                vector_context += "Recent conversation:\n" + "\n".join(
+                    f"User: {r['metadata'].get('user_msg', '')}\nAssistant: {r['metadata'].get('assistant_msg', '')}"
+                    for r in recent
+                )
+            if relevant:
+                vector_context += "\nRelevant history:\n" + "\n".join(
+                    f"Q: {r['content'].split('User: ')[1].split('Assistant: ')[0] if 'User: ' in r['content'] else ''}"
+                    for r in relevant
+                )
+    except Exception as e:
+        print(f"[Vector memory error]: {e}")
+        vector_context = ""
 
     system = (
         "You are BARQ, a battle-hardened tactical AI operator for Ibrahim. "
