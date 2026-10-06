@@ -62,33 +62,63 @@ function getWSUrl() {
   return BACKEND_URL;
 }
 
+function checkBackendHealth(cb) {
+  const req = http.get(BACKEND_HTTP + '/health/live', (res) => {
+    res.resume();
+    cb(res.statusCode === 200);
+  });
+  req.on('error', () => cb(false));
+  req.setTimeout(2000, () => { req.destroy(); cb(false); });
+}
+
+function checkUIHealth(cb) {
+  const req = http.get(UI_URL, (res) => {
+    res.resume();
+    cb(res.statusCode === 200);
+  });
+  req.on('error', () => cb(false));
+  req.setTimeout(2000, () => { req.destroy(); cb(false); });
+}
+
 function startBackend() {
   if (backend) return;
-  log('Starting backend...');
-  backend = spawn(VENV_PY, ['server.py'], {
-    cwd: ROOT,
-    windowsHide: true,
-    stdio: 'ignore',
-  });
-  backend.on('exit', (code) => {
-    log('Backend exited', code);
-    backend = null;
+  checkBackendHealth((healthy) => {
+    if (healthy) {
+      log('Backend already running on port 8080');
+      return;
+    }
+    log('Starting backend...');
+    backend = spawn(VENV_PY, ['server.py'], {
+      cwd: ROOT,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    backend.on('exit', (code) => {
+      log('Backend exited', code);
+      backend = null;
+    });
   });
 }
 
 function startNext() {
   if (nextServer) return;
-  log('Starting UI server...');
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  nextServer = spawn(npmCmd, ['run', 'start'], {
-    cwd: BARQ_UI,
-    windowsHide: true,
-    stdio: 'ignore',
-    shell: true,
-  });
-  nextServer.on('exit', (code) => {
-    log('UI server exited', code);
-    nextServer = null;
+  checkUIHealth((healthy) => {
+    if (healthy) {
+      log('UI server already running on port 3000');
+      return;
+    }
+    log('Starting UI server...');
+    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    nextServer = spawn(npmCmd, ['run', 'start'], {
+      cwd: BARQ_UI,
+      windowsHide: true,
+      stdio: 'ignore',
+      shell: true,
+    });
+    nextServer.on('exit', (code) => {
+      log('UI server exited', code);
+      nextServer = null;
+    });
   });
 }
 
