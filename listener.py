@@ -1,10 +1,17 @@
 import speech_recognition as sr
+import audioop
 from groq import Groq
 from config import GROQ_API_KEY, WHISPER_MODEL
 
 _client = Groq(api_key=GROQ_API_KEY)
 
 LANG = "en"
+MIN_SPEECH_RMS = 120
+
+
+def has_audible_speech(audio: sr.AudioData) -> bool:
+    """Reject near-silent captures before Whisper can invent a transcript."""
+    return audioop.rms(audio.frame_data, audio.sample_width) >= MIN_SPEECH_RMS
 
 
 def transcribe_audio(wav_bytes: bytes) -> str:
