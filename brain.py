@@ -110,6 +110,10 @@ def think(prompt: str, situation: str = "", last_speech: str = "") -> dict:
 
     messages = [{"role": "system", "content": system}]
 
+    # Add vector memory context
+    if vector_context:
+        messages.append({"role": "system", "content": f"LONG-TERM MEMORY CONTEXT:\n{vector_context}"})
+
     # recent conversation memory
     for turn in mem["history"]:
         messages.append({"role": turn["role"], "content": turn["content"]})
