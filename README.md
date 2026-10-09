@@ -443,6 +443,13 @@ barq-ai-assistant/
 
 ---
 
+## Authors
+
+Muhammad Ibrahim
+Muhammad Hashim
+
+---
+
 ## Contributing
 
 This is a personal project, but issues and suggestions are welcome. 
